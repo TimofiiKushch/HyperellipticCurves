@@ -216,6 +216,7 @@ namespace HyperellipticCurves
 
             return null;
         }
+
         public GFElement<T> RandomNonZero(int seed = -1)
         {
             var rand = new Random();
@@ -244,15 +245,15 @@ namespace HyperellipticCurves
             if (typeof(T) == typeof(int))
                 for (int i = 0; i < copy.Count; i++)
                     copy[i] = (T)(object)Methods.NumRemainder((int)(object)copy[i], Characteristic());
-            while (copy.Count < dimension)
-                copy.Add(baseField.Scalar(0));
-            
+
             if (copy.Count > dimension)
             {
                 var temp = new List<T>();
                 copy = RemainderPoly(copy, primitive, out temp);
-                copy.RemoveRange(dimension, copy.Count - dimension);
             }
+
+            while (copy.Count < dimension)
+                copy.Add(baseField.Scalar(0));
 
             return copy;
         }
@@ -273,6 +274,8 @@ namespace HyperellipticCurves
         }
         public T LeadingCoeff(List<T> polynomial)
         {
+            if (polynomial.Count == 0)
+                return baseField.Scalar(0);
             return polynomial[Degree(polynomial)];
         }
         public GFElement<T> Add(GFElement<T> a, GFElement<T> b)
@@ -304,7 +307,6 @@ namespace HyperellipticCurves
 
             return c;
         }
-
         List<T> SubtractPoly(List<T> a, List<T> b)
         {
 
@@ -322,7 +324,6 @@ namespace HyperellipticCurves
 
             return c;
         }
-
         List<T> MultiplyPoly(List<T> a, List<T> b)
         {
             List<T> c = new List<T>(a.Count + b.Count - 1);
@@ -362,6 +363,14 @@ namespace HyperellipticCurves
                 }
                 cur--;
             }
+
+            int last = copy.FindLastIndex((T el) => !baseField.IsEqual(el, zero));
+            if (last < copy.Count - 1)
+                copy.RemoveRange(last + 1, copy.Count - last - 1);
+
+            last = factor.FindLastIndex((T el) => !baseField.IsEqual(el, zero));
+            if (last < factor.Count - 1)
+                factor.RemoveRange(last + 1, factor.Count - last - 1);
 
             return copy;
         }
