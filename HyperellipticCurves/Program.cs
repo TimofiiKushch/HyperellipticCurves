@@ -29,6 +29,8 @@ namespace HyperellipticCurves
             var b = new List<int> { positive ? 1 : 2 };
 
             var cm = new EllipticCurveManager(a, b, l, positive, true);
+            cm.curve6.field.Inverse(cm.curve6.field.RandomNonZero());
+            Console.ReadLine();
 
             // let's find P of order q
             // q is prime so just need qP = 0
