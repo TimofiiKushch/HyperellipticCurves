@@ -29,9 +29,9 @@ namespace HyperellipticCurves
             var b = new List<int> { positive ? 1 : 2 };
 
             var cm = new EllipticCurveManager(a, b, l, positive, true);
-            var test1 = cm.curve6.field.RandomNonZero();
-            var test2 = cm.curve6.field.Inverse(test1);
-            Console.ReadLine();
+            //var test1 = cm.curve6.field.RandomNonZero();
+            //var test2 = cm.curve6.field.Inverse(test1);
+            //Console.ReadLine();
 
             // let's find P of order q
             // q is prime so just need qP = 0
@@ -50,7 +50,7 @@ namespace HyperellipticCurves
                 x %= q;
             }
 
-            x = 2; // test
+            //x = 2; // test
             var r = cm.curve.Mult(p, x);
 
             // Step 2: signing
