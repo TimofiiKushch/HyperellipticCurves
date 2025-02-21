@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Numerics;
 
 namespace HyperellipticCurves
 {
@@ -76,7 +77,21 @@ namespace HyperellipticCurves
         }
     }
 
-    public class PrimeField
+    public interface IField<T>
+    {
+        public T Add(T a, T b);
+        public T Subtract(T a, T b);
+        public T Multiply(T a, T b);
+        public T Inverse(T a);
+        public T Scalar(int a);
+        public bool IsEqual(T a, T b);
+        public T Clone(T a);
+        public BigInteger Size();
+        public T RandomNonZero(int seed = -1);
+        public int Characteristic();
+        public bool IsEqual(IField<T> b);
+    }
+    public class PrimeField : IField<int>
     {
         public int characteristic { get; }
 
@@ -85,21 +100,19 @@ namespace HyperellipticCurves
             this.characteristic = characteristic;
         }
 
-        public virtual int Add(int a, int b)
+        public int Add(int a, int b)
         {
             return Methods.NumRemainder(a + b, characteristic);
         }
-
-        public virtual int Subtract(int a, int b)
+        public int Subtract(int a, int b)
         {
             return Methods.NumRemainder(a - b, characteristic);
         }
-
-        public virtual int Multiply(int a, int b)
+        public int Multiply(int a, int b)
         {
             return Methods.NumRemainder(a * b, characteristic);
         }
-        public virtual int Inverse(int a)
+        public int Inverse(int a)
         {
             int inv, s;
             Methods.NumericalEuclid(a, characteristic, out inv, out s);
@@ -236,67 +249,7 @@ namespace HyperellipticCurves
             else
                 return new PrimePolynomial(new List<int> { 1 }, this);
         }
-        public void Gauss(List<List<int>> m, List<int> y)
-        {
-            //for (int i = 0; i < m.Count; i++)
-            //    Program.Print(m[i]);
-            //Console.WriteLine();
-            //Program.Print(y);
-            //Console.WriteLine();
-
-            // implication: matrix is square
-            if (m.Count != y.Count)
-                throw new Exception();
-
-            for (int j = 0; j < m.Count; j++)
-            {
-                bool zeroCol = true;
-                for (int i = j; i < m.Count; i++)
-                {
-                    if (m[i][j] != 0)
-                    {
-                        // swap i and j rows
-                        var temp = m[i];
-                        m[i] = m[j];
-                        m[j] = temp;
-
-                        int tempi = y[i];
-                        y[i] = y[j];
-                        y[j] = tempi;
-
-                        zeroCol = false;
-                        break;
-                    }
-                }
-
-                if (zeroCol)
-                    continue;
-                
-                var inv = Inverse(m[j][j]);
-                m[j] = MultiplyPoly(m[j], new List<int> { inv });
-                y[j] = Multiply(y[j], inv);
-
-                
-
-                for (int i = 0; i < m.Count; i++)
-                    if (i != j)
-                    {
-                        m[i] = SubtractPoly(m[i], MultiplyPoly(m[j], new List<int> { m[i][j] }));
-                        y[i] = Subtract(y[i], Multiply(y[j], m[i][j]));
-                    }
-
-                //for (int i = 0; i < m.Count; i++)
-                //    Program.Print(m[i]);
-                //Console.WriteLine();
-                //Program.Print(y);
-                //Console.WriteLine();
-            }
-
-            //for (int i = 0; i < m.Count; i++)
-            //    Program.Print(m[i]);
-            //Console.WriteLine();
-            //Program.Print(y);
-        }
+        
         public int Degree(List<int> polynomial)
         {
             int li = polynomial.FindLastIndex((int i) => i != 0);
@@ -308,6 +261,51 @@ namespace HyperellipticCurves
         public virtual int LeadingCoeff(List<int> polynomial)
         {
             return polynomial[Degree(polynomial)];
+        }
+
+        public int Scalar(int a)
+        {
+            return Methods.NumRemainder(a, characteristic);
+        }
+
+        public bool IsEqual(int a, int b)
+        {
+            return a == b;
+        }
+
+        public int Clone(int a)
+        {
+            return a;
+        }
+
+        public BigInteger Size()
+        {
+            return characteristic;
+        }
+
+        public int RandomNonZero(int seed = -1)
+        {
+            var rand = new Random();
+            return rand.Next() % characteristic;
+        }
+
+        public int Characteristic()
+        {
+            return characteristic;
+        }
+
+        public bool IsEqual(IField<int> b)
+        {
+            return characteristic == b.Characteristic();
+        }
+
+        public static bool operator ==(PrimeField a, PrimeField b)
+        {
+            return a.IsEqual(b);
+        }
+        public static bool operator !=(PrimeField a, PrimeField b)
+        {
+            return !(a == b);
         }
     }
 }
