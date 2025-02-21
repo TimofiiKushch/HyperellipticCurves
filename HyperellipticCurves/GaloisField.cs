@@ -115,7 +115,7 @@ namespace HyperellipticCurves
 
             List<T> inv, s;
             var gcd = EuclidPoly(a.p, primitive, out inv, out s);
-            inv = MultiplyPoly(new List<T> { baseField.Inverse(gcd[0]) }, inv);
+            inv = MultiplyPoly(new List<T> { baseField.Inverse(gcd[0]) }, inv); // TODO improve
             return new GFElement<T>(inv, this);
         }
         public GFElement<T> Pow(GFElement<T> a, BigInteger k)
