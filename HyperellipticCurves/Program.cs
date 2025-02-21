@@ -200,8 +200,7 @@ namespace HyperellipticCurves
 
             var cm = new EllipticCurveManager(a, b, l, positive);
             var test1 = cm.curve6.field.RandomNonZero();
-            var test2 = cm.curve6.field.RandomNonZero();
-            var test3 = test1 * test2;
+            var test2 = cm.curve6.field.Inverse(test1);
             Console.ReadLine();
 
             // let's find P of order q
