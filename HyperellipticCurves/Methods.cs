@@ -164,6 +164,116 @@ namespace HyperellipticCurves
                 b = 1;
             return b;
         }
+        public static List<int> SolveCubicEquation3L(int a, GaloisField<int> field)
+        {
+            // solves equation y^3 - y = a in F_3^l
+
+            if (field.Characteristic() != 3 || a > 2 || a < 0)
+                throw new Exception();
+
+            var l = field.dimension;
+            var md = 3 * (l - 1) + 1;
+
+            var m = new List<List<int>>(md);
+            for (int i = 0; i < md; i++)
+                m.Add(new List<int>(Enumerable.Repeat(0, md)));
+
+            for (int i = 0; i < l; i++)
+            {
+                m[3 * i][i] = field.baseField.Add(m[3 * i][i], 1);
+                m[i][i] = field.baseField.Subtract(m[i][i], 1);
+            }
+
+            for (int i = l; i < md; i++)
+                for (int j = 0; j <= l; j++)
+                    m[i - l + j][i] = field.baseField.Add(m[i - l + j][i], field.primitive[j]);
+
+            var y = new List<int>(Enumerable.Repeat(0, md));
+            y[0] = a;
+
+
+            Gauss(m, y, (PrimeField)field.baseField);
+
+            // m[0][0] will be 0, y wil be (a, 0 ... 0)
+            // find non-zero in first row, set it to a*inv
+            // other zero cols correspond to zeros
+            // figure out "real" variables based on non-zero "fake" variable
+
+            for (int j = 0; j < m.Count; j++)
+                if (m[0][j] != 0)
+                {
+                    var fake = a * field.baseField.Inverse(m[0][j]);
+                    var res = new List<int>(l);
+                    res.Add(0);
+                    for (int i = 1; i < l; i++)
+                        res.Add(-fake * m[i][j]);
+
+                    return res;
+                }
+
+            throw new Exception();
+        }
+        public static void Gauss(List<List<int>> m, List<int> y, PrimeField field)
+        {
+            //for (int i = 0; i < m.Count; i++)
+            //    Program.Print(m[i]);
+            //Console.WriteLine();
+            //Program.Print(y);
+            //Console.WriteLine();
+
+            // implication: matrix is square
+            if (m.Count != y.Count)
+                throw new Exception();
+
+            for (int j = 0; j < m.Count; j++)
+            {
+                bool zeroCol = true;
+                for (int i = j; i < m.Count; i++)
+                {
+                    if (m[i][j] != 0)
+                    {
+                        // swap i and j rows
+                        var temp = m[i];
+                        m[i] = m[j];
+                        m[j] = temp;
+
+                        int tempi = y[i];
+                        y[i] = y[j];
+                        y[j] = tempi;
+
+                        zeroCol = false;
+                        break;
+                    }
+                }
+
+                if (zeroCol)
+                    continue;
+
+                var inv = field.Inverse(m[j][j]);
+                m[j] = field.MultiplyPoly(m[j], new List<int> { inv });
+                y[j] = field.Multiply(y[j], inv);
+
+
+
+                for (int i = 0; i < m.Count; i++)
+                    if (i != j)
+                    {
+                        m[i] = field.SubtractPoly(m[i], field.MultiplyPoly(m[j], new List<int> { m[i][j] }));
+                        y[i] = field.Subtract(y[i], field.Multiply(y[j], m[i][j]));
+                    }
+
+                //for (int i = 0; i < m.Count; i++)
+                //    Program.Print(m[i]);
+                //Console.WriteLine();
+                //Program.Print(y);
+                //Console.WriteLine();
+            }
+
+            //for (int i = 0; i < m.Count; i++)
+            //    Program.Print(m[i]);
+            //Console.WriteLine();
+            //Program.Print(y);
+        }
     }
 }
 
@@ -298,3 +408,4 @@ namespace HyperellipticCurves
 //    //Program.Print(res);
 //    return res;
 //}
+

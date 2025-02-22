@@ -9,118 +9,51 @@ using System.Security.Cryptography;
 
 namespace HyperellipticCurves
 {
-    public class GFElement
+    public class GFElement<T>
     {
-        public List<int> p { get; }
-        public GaloisField field { get; }
+        public List<T> p { get; }
+        public GaloisField<T> field { get; }
 
-        public GFElement(List<int> polynomial, GaloisField field)
+        public GFElement(List<T> polynomial, GaloisField<T> field)
         {
             p = field.FixRepresentation(polynomial);
             this.field = field;
         }
 
-        public static GFElement operator -(GFElement a)
+        public static GFElement<T> operator -(GFElement<T> a)
         {
-            return a.field.Subtract(new GFElement(new List<int> { 0 }, a.field), a);
+            return a.field.Subtract(a.field.Scalar(0), a);
         }
 
-        public static GFElement operator +(GFElement a, GFElement b)
+        public static GFElement<T> operator +(GFElement<T> a, GFElement<T> b)
         {
-            if (a.field.characteristic == b.field.characteristic)
+            if (a.field == b.field)
                 return a.field.Add(a, b);
             else
                 return null;
         }
 
-        public static GFElement operator -(GFElement a, GFElement b)
+        public static GFElement<T> operator -(GFElement<T> a, GFElement<T> b)
         {
-            if (a.field.characteristic == b.field.characteristic)
+            if (a.field == b.field)
                 return a.field.Subtract(a, b);
             else
                 return null;
         }
 
-        public static GFElement operator *(GFElement a, GFElement b)
+        public static GFElement<T> operator *(GFElement<T> a, GFElement<T> b)
         {
-            if (a.field.characteristic == b.field.characteristic)
+            if (a.field == b.field)
                 return a.field.Multiply(a, b);
             else
                 return null;
         }
-        public static GFElement operator *(int a, GFElement b)
+        public static GFElement<T> operator *(int a, GFElement<T> b)
         {
-            return b.field.Multiply(new GFElement(new List<int> { a }, b.field), b);
+            return b.field.Multiply(b.field.Scalar(a), b);
         }
 
-        public static GFElement operator /(GFElement a, GFElement b)
-        {
-            if (a.field.characteristic == b.field.characteristic)
-            {
-                return a * a.field.Inverse(b);
-            }
-            else
-                return null;
-        }
-
-        public static bool operator ==(GFElement a, GFElement b)
-        {
-            if (a.field != b.field)
-                return false;
-
-            return a.field.IsEqual(a, b);
-        }
-
-        public static bool operator !=(GFElement a, GFElement b)
-        {
-            return !(a == b);
-        }
-    }
-    public class ExtensionElement 
-    {
-        public List<GFElement> p { get; }
-        public GaloisFieldExtension field { get; }
-
-        public ExtensionElement(List<GFElement> polynomial, GaloisFieldExtension field)
-        {
-            p = field.FixRepresentation(polynomial);
-            this.field = field;
-        }
-
-        public static ExtensionElement operator -(ExtensionElement a)
-        {
-            return new ExtensionElement(new List<GFElement> { a.field.baseField.Scalar(0) }, a.field) - a;
-        }
-
-        public static ExtensionElement operator +(ExtensionElement a, ExtensionElement b)
-        {
-            if (a.field == b.field)
-                return new(a.field.baseField.AddPoly(a.p, b.p), a.field);
-            else
-                return null;
-        }
-
-        public static ExtensionElement operator -(ExtensionElement a, ExtensionElement b)
-        {
-            if (a.field == b.field)
-                return new(a.field.baseField.SubtractPoly(a.p, b.p), a.field);
-            else
-                return null;
-        }
-
-        public static ExtensionElement operator *(ExtensionElement a, ExtensionElement b)
-        {
-            if (a.field == b.field)
-                return new(a.field.baseField.MultiplyPoly(a.p, b.p), a.field);
-            else
-                return null;
-        }
-        public static ExtensionElement operator *(GFElement a, ExtensionElement b)
-        {
-            return new ExtensionElement(new List<GFElement> { a }, b.field) * b;
-        }
-
-        public static ExtensionElement operator /(ExtensionElement a, ExtensionElement b)
+        public static GFElement<T> operator /(GFElement<T> a, GFElement<T> b)
         {
             if (a.field == b.field)
             {
@@ -130,7 +63,7 @@ namespace HyperellipticCurves
                 return null;
         }
 
-        public static bool operator ==(ExtensionElement a, ExtensionElement b)
+        public static bool operator ==(GFElement<T> a, GFElement<T> b)
         {
             if (a.field != b.field)
                 return false;
@@ -138,118 +71,57 @@ namespace HyperellipticCurves
             return a.field.IsEqual(a, b);
         }
 
-        public static bool operator !=(ExtensionElement a, ExtensionElement b)
+        public static bool operator !=(GFElement<T> a, GFElement<T> b)
         {
             return !(a == b);
         }
     }
-
-    public class ECP
+    public class GaloisField<T> : IField<GFElement<T>>
     {
-        public GFElement x { get; }
-        public GFElement y { get; }
-
-        public GaloisField field { get; }
-
-        public ECP(GFElement x, GFElement y)
-        {
-            if (x.field == y.field)
-            {
-                this.x = x;
-                this.y = y;
-                field = x.field;
-            }
-        }
-
-        public static bool operator ==(ECP a, ECP b)
-        {
-            return a.x == b.x && a.y == b.y;
-        }
-
-        public static bool operator !=(ECP a, ECP b)
-        {
-            return !(a == b);
-        }
-    }
-    public class ECPExtension
-    {
-        public ExtensionElement x { get; }
-        public ExtensionElement y { get; }
-
-        public GaloisFieldExtension field { get; }
-
-        public ECPExtension(ExtensionElement x, ExtensionElement y)
-        {
-            if (x.field == y.field)
-            {
-                this.x = x;
-                this.y = y;
-                field = x.field;
-            }
-        }
-
-        public static bool operator ==(ECPExtension a, ECPExtension b)
-        {
-            return a.x == b.x && a.y == b.y;
-        }
-
-        public static bool operator !=(ECPExtension a, ECPExtension b)
-        {
-            return !(a == b);
-        }
-    }
-
-
-    public class GaloisField
-    {
-        public int characteristic { get; }
+        //public int characteristic { get; }
         public int dimension { get; }
-        private List<int> primitive = null;
-        readonly PrimeField primeField;
+        readonly public List<T> primitive = null;
+        readonly public IField<T> baseField;
 
         public BigInteger size { get; }
 
-        public GaloisField(int characteristic, List<int> primitive)
+        public GaloisField(IField<T> baseField, List<int> primitive)
         {
-            this.characteristic = characteristic;
+            this.baseField = baseField;
+
+            this.primitive = new List<T>();
+            foreach (int i in primitive)
+                this.primitive.Add(baseField.Scalar(i));
+
             dimension = primitive.Count - 1;
+            size = BigInteger.Pow(baseField.Size(), dimension);
+        }
+        public GaloisField(IField<T> baseField, List<T> primitive)
+        {
+            this.baseField = baseField;
             this.primitive = primitive;
-
-            primeField = new PrimeField(characteristic);
-
-            size = BigInteger.Pow(characteristic, dimension);
+            dimension = primitive.Count - 1;
+            size = BigInteger.Pow(baseField.Size(), dimension);
         }
 
-        public GFElement Scalar(int a)
+        public GFElement<T> Scalar(int a)
         {
-            return new(new List<int> { a }, this);
+            return new(new List<T> { baseField.Scalar(a) }, this);
         }
-        public GFElement Add(GFElement a, GFElement b)
+        public GFElement<T> Inverse(GFElement<T> a)
         {
-            return new GFElement(primeField.AddPoly(a.p, b.p), this);
-        }
-        public GFElement Subtract(GFElement a, GFElement b)
-        {
-            return new GFElement(primeField.SubtractPoly(a.p, b.p), this);
-        }
-        public GFElement Multiply(GFElement a, GFElement b)
-        {
-            return new GFElement(primeField.MultiplyPoly(a.p, b.p), this);
-        }
-        public GFElement Inverse(GFElement a)
-        {
-            if (primeField.Degree(a.p) == 0)
-                return new GFElement(new List<int> { primeField.Inverse(a.p[0]) }, this);
+            if (Degree(a.p) == 0)
+                return new GFElement<T>(new List<T> { baseField.Inverse(a.p[0]) }, this);
 
-            PrimePolynomial inv, s;
-            var gcd = primeField.EuclidPoly(new(a.p, primeField), new(primitive, primeField), out inv, out s);
-            var res = new GFElement(inv.poly, this);
-            return primeField.Inverse(gcd.poly[0]) * res;
+            List<T> inv, s;
+            var gcd = EuclidPoly(a.p, primitive, out inv, out s);
+            inv = MultiplyPoly(new List<T> { baseField.Inverse(gcd[0]) }, inv);
+            return new GFElement<T>(inv, this);
         }
-        public GFElement Pow(GFElement a, BigInteger k)
+        public GFElement<T> Pow(GFElement<T> a, BigInteger k)
         {
-            GFElement res = null;
-            GFElement last = a;
+            GFElement<T> res = null;
+            GFElement<T> last = a;
 
             while (true)
             {
@@ -268,21 +140,21 @@ namespace HyperellipticCurves
             }
 
             if (res is null)
-                return new GFElement(new List<int> { 1 }, this);
+                return Scalar(1);
 
             return res;
         }
-        public static List<GFElement> Root(GFElement a)
+        public static GFElement<T> Root(GFElement<T> a)
         {
             if (a.field.size % 2 == 1)
             {
                 // quadratic residue check
-                if (a.field.Pow(a, (a.field.size - 1) / 2) == new GFElement(new List<int> { 1 }, a.field))
+                if (a.field.Pow(a, (a.field.size - 1) / 2) == a.field.Scalar(1))
                 {
                     if (a.field.size % 4 == 3)
                     {
                         var root = a.field.Pow(a, (a.field.size + 1) / 4);
-                        return new List<GFElement> { root, -root };
+                        return root;
                     }
                     else if (a.field.size % 4 == 1)
                     {
@@ -297,7 +169,7 @@ namespace HyperellipticCurves
                             degree2++;
                         }
 
-                        GFElement re;
+                        GFElement<T> re;
                         while (true)
                         {
                             re = a.field.RandomNonZero();
@@ -306,8 +178,8 @@ namespace HyperellipticCurves
                         }
 
                         // precalculate all necessary powers
-                        var apow = new List<GFElement>();
-                        var repow = new List<GFElement>();
+                        var apow = new List<GFElement<T>>();
+                        var repow = new List<GFElement<T>>();
                         for (int i = 0; i < degree2; i++)
                         {
                             if (i == 0)
@@ -337,69 +209,21 @@ namespace HyperellipticCurves
                         }
 
                         var root = apow[0] * a.field.Pow(repow[0], k);
-                        return new List<GFElement> { root, -root };
+                        return root;
                     }
                 }
             }
 
             return null;
         }
-        public static GFElement SolveCubicEquation3L(int a, GaloisField field)
-        {
-            // solves equation y^3 - y = a in F_3^l
 
-            if (field.characteristic != 3 || a > 2 || a < 0)
-                throw new Exception();
-
-            var l = field.dimension;
-            var md = 3 * (l - 1) + 1;
-
-            var m = new List<List<int>>(md);
-            for (int i = 0; i < md; i++)
-                m.Add(new List<int>(Enumerable.Repeat(0, md)));
-
-            for (int i = 0; i < l; i++)
-            {
-                m[3 * i][i] = field.primeField.Add(m[3 * i][i], 1);
-                m[i][i] = field.primeField.Subtract(m[i][i], 1);
-            }
-
-            for (int i = l; i < md; i++)
-                for (int j = 0; j <= l; j++)
-                    m[i - l + j][i] = field.primeField.Add(m[i - l + j][i], field.primitive[j]);
-
-            var y = new List<int>(Enumerable.Repeat(0, md));
-            y[0] = a;
-
-
-            field.primeField.Gauss(m, y);
-
-            // m[0][0] will be 0, y wil be (a, 0 ... 0)
-            // find non-zero in first row, set it to a*inv
-            // other zero cols correspond to zeros
-            // figure out "real" variables based on non-zero "fake" variable
-
-            for (int j = 0; j < m.Count; j++)
-                if (m[0][j] != 0)
-                {
-                    var fake = a * field.primeField.Inverse(m[0][j]);
-                    var res = new List<int>(l);
-                    res.Add(0);
-                    for (int i = 1; i < l; i++)
-                        res.Add(-fake * m[i][j]);
-
-                    return new GFElement(res, field);
-                }
-
-            throw new Exception();
-        }
-        public GFElement RandomNonZero(int seed = -1)
+        public GFElement<T> RandomNonZero(int seed = -1)
         {
             var rand = new Random();
             if (seed >= 0)
                 rand = new Random(seed);
 
-            var poly = new List<int>(dimension);
+            var poly = new List<T>(dimension);
             bool zero = true;
 
             while (zero)
@@ -407,56 +231,72 @@ namespace HyperellipticCurves
                 poly.Clear();
                 for (int i = 0; i < dimension; i++)
                 {
-                    poly.Add(rand.Next(0, characteristic));
-                    if (poly[i] != 0)
+                    poly.Add(baseField.RandomNonZero());
+                    if (!baseField.IsEqual(poly[i], baseField.Scalar(0)))
                         zero = false;
                 }
             }
 
-            return new GFElement(poly, this);
+            return new GFElement<T>(poly, this);
         }
-        public List<int> FixRepresentation(List<int> polynomial)
+        public List<T> FixRepresentation(List<T> polynomial)
         {
-            List<int> copy = new List<int>(polynomial);
-            while (copy.Count < dimension)
-                copy.Add(0);
-            for (int i = 0; i < copy.Count; i++)
-                copy[i] = Methods.NumRemainder(copy[i], characteristic);
+            List<T> copy = new List<T>(polynomial);
+            if (typeof(T) == typeof(int))
+                for (int i = 0; i < copy.Count; i++)
+                    copy[i] = (T)(object)Methods.NumRemainder((int)(object)copy[i], Characteristic());
+
             if (copy.Count > dimension)
             {
-                var temp = new List<int>();
-                copy = primeField.RemainderPoly(copy, primitive, out temp);
-                copy.RemoveRange(dimension, copy.Count - dimension);
+                var temp = new List<T>();
+                copy = RemainderPoly(copy, primitive, out temp);
             }
+
+            while (copy.Count < dimension)
+                copy.Add(baseField.Scalar(0));
 
             return copy;
         }
-        public bool IsEqual(GFElement a, GFElement b)
+        public bool IsEqual(GFElement<T> a, GFElement<T> b)
         {
             // implication: elements from the same field
-            List<int> ap = a.p, bp = b.p;
+            List<T> ap = a.p, bp = b.p;
             for (int i = 0; i < ap.Count; i++)
-                if (ap[i] != bp[i])
+                if (!baseField.IsEqual(ap[i], bp[i]))
                     return false;
             return true;
         }
-        public int Degree(List<GFElement> polynomial)
+        public int Degree(List<T> polynomial)
         {
-            var zero = Scalar(0);
-            var res = polynomial.FindLastIndex((GFElement el) => el != zero);
+            var zero = baseField.Scalar(0);
+            var res = polynomial.FindLastIndex((T el) => !baseField.IsEqual(el, zero));
             return res < 0 ? 0 : res;
         }
-        public GFElement LeadingCoeff(List<GFElement> polynomial)
+        public T LeadingCoeff(List<T> polynomial)
         {
+            if (polynomial.Count == 0)
+                return baseField.Scalar(0);
             return polynomial[Degree(polynomial)];
         }
-
-        public List<GFElement> AddPoly(List<GFElement> a, List<GFElement> b)
+        public GFElement<T> Add(GFElement<T> a, GFElement<T> b)
         {
-            List<GFElement> c = new List<GFElement>();
+            return new GFElement<T>(AddPoly(a.p, b.p), this);
+        }
+        public GFElement<T> Subtract(GFElement<T> a, GFElement<T> b)
+        {
+            return new GFElement<T>(SubtractPoly(a.p, b.p), this);
+        }
+        public GFElement<T> Multiply(GFElement<T> a, GFElement<T> b)
+        {
+            return new GFElement<T>(MultiplyPoly(a.p, b.p), this);
+        }
+
+        List<T> AddPoly(List<T> a, List<T> b)
+        {
+            List<T> c = new List<T>();
 
             for (int i = 0; i < Math.Min(a.Count, b.Count); i++)
-                c.Add(a[i] + b[i]);
+                c.Add(baseField.Add(a[i], b[i]));
 
             if (a.Count > b.Count)
                 for (int i = b.Count; i < a.Count; i++)
@@ -467,509 +307,203 @@ namespace HyperellipticCurves
 
             return c;
         }
-
-        public List<GFElement> SubtractPoly(List<GFElement> a, List<GFElement> b)
+        List<T> SubtractPoly(List<T> a, List<T> b)
         {
 
-            List<GFElement> c = new List<GFElement>();
+            List<T> c = new List<T>();
 
             for (int i = 0; i < Math.Min(a.Count, b.Count); i++)
-                c.Add(a[i] - b[i]);
+                c.Add(baseField.Subtract(a[i], b[i]));
 
             if (a.Count > b.Count)
                 for (int i = b.Count; i < a.Count; i++)
                     c.Add(a[i]);
             else
                 for (int i = a.Count; i < b.Count; i++)
-                    c.Add(-b[i]);
+                    c.Add(-(dynamic)b[i]);
 
             return c;
         }
-
-        public List<GFElement> MultiplyPoly(List<GFElement> a, List<GFElement> b)
+        List<T> MultiplyPoly(List<T> a, List<T> b)
         {
-            List<GFElement> c = new List<GFElement>(a.Count + b.Count - 1);
+            List<T> c = new List<T>(a.Count + b.Count - 1);
             for (int i = 0; i < a.Count + b.Count - 1; i++)
-                c.Add(Scalar(0));
+                c.Add(baseField.Scalar(0));
             for (int i = 0; i < a.Count; i++)
                 for (int j = 0; j < b.Count; j++)
-                    c[i + j] += a[i] * b[j];
+                    c[i + j] = baseField.Add(c[i + j], baseField.Multiply(a[i], b[j]));
 
             return c;
         }
-        public List<GFElement> RemainderPoly(List<GFElement> a, List<GFElement> b, out List<GFElement> factor)
+        public List<T> RemainderPoly(List<T> a, List<T> b, out List<T> factor)
         {
-            List<GFElement> copy = new List<GFElement>(a.Count);
-            factor = new List<GFElement>(a.Count);
+            List<T> copy = new List<T>(a.Count);
+            factor = new List<T>(a.Count);
             foreach (var el in a)
             {
-                copy.Add(new GFElement(el.p, this));
-                factor.Add(Scalar(0));
+                copy.Add(baseField.Clone(el));
+                factor.Add(baseField.Scalar(0));
             }
 
-            var zero = Scalar(0);
-            int cur = copy.FindLastIndex((GFElement el) => el != zero);
-            int bf = b.FindLastIndex((GFElement el) => el != zero);
+            var zero = baseField.Scalar(0);
+            int cur = copy.FindLastIndex((T el) => !baseField.IsEqual(el, zero));
+            int bf = b.FindLastIndex((T el) => !baseField.IsEqual(el, zero));
 
-            GFElement inv = Inverse(b[bf]);
+            T inv = baseField.Inverse(b[bf]);
 
             while (cur >= bf)
             {
                 int diff = cur - bf;
-                if (copy[cur] != zero)
+                if (!baseField.IsEqual(copy[cur], zero))
                 {
                     for (int i = 0; i < bf; i++)
-                        copy[diff + i] -= copy[cur] * inv * b[i];
-                    factor[diff] = copy[cur] * inv;
-                    copy[cur] = new GFElement(zero.p, this);
+                        copy[diff + i] = baseField.Subtract(copy[diff + i], baseField.Multiply(baseField.Multiply(copy[cur], inv), b[i]));
+                    factor[diff] = baseField.Multiply(copy[cur], inv);
+                    copy[cur] = baseField.Clone(zero);
                 }
                 cur--;
             }
 
+            int last = copy.FindLastIndex((T el) => !baseField.IsEqual(el, zero));
+            if (last < copy.Count - 1)
+                copy.RemoveRange(last + 1, copy.Count - last - 1);
+
+            last = factor.FindLastIndex((T el) => !baseField.IsEqual(el, zero));
+            if (last < factor.Count - 1)
+                factor.RemoveRange(last + 1, factor.Count - last - 1);
+
             return copy;
         }
-        public List<GFElement> EuclidPoly(List<GFElement> a, List<GFElement> b, out List<GFElement> t, out List<GFElement> s)
+        public List<T> EuclidPoly(List<T> a, List<T> b, out List<T> t, out List<T> s)
         {
-            List<GFElement>[] sl = { new List<GFElement> { Scalar(0) }, new List<GFElement> { Scalar(1) } };
-            List<GFElement>[] tl = { new List<GFElement> { Scalar(1) }, new List<GFElement> { Scalar(0) } };
+            List<T>[] sl = new List<T>[]{ new List<T> { baseField.Scalar(0) }, new List<T> { baseField.Scalar(1) } };
+            List<T>[] tl = new List<T>[]{ new List<T> { baseField.Scalar(1) }, new List<T> { baseField.Scalar(0) } };
 
-            var ac = new List<GFElement>(a.Count);
+            var ac = new List<T>(a.Count);
             foreach (var el in a)
-                ac.Add(new GFElement(el.p, this));
+                ac.Add(baseField.Clone(el));
 
-            var bc = new List<GFElement>(b.Count);
+            var bc = new List<T>(b.Count);
             foreach (var el in b)
-                bc.Add(new GFElement(el.p, this));
+                bc.Add(baseField.Clone(el));
 
-            var zero = Scalar(0);
-            while (LeadingCoeff(ac) != zero && LeadingCoeff(bc) != zero)
+            var zero = baseField.Scalar(0);
+            while (!baseField.IsEqual(LeadingCoeff(ac), zero) && !baseField.IsEqual(LeadingCoeff(bc), zero))
             {
-                List<GFElement> q = new List<GFElement>();
-                List<GFElement> c = ac;
+                List<T> q = new List<T>();
+                List<T> c = ac;
                 ac = RemainderPoly(bc, ac, out q);
                 bc = c;
 
-                sl = new List<GFElement>[] { SubtractPoly(sl[1], MultiplyPoly(q, sl[0])), sl[0] };
-                tl = new List<GFElement>[] { SubtractPoly(tl[1], MultiplyPoly(q, tl[0])), tl[0] };
+                sl = new List<T>[] { SubtractPoly(sl[1], MultiplyPoly(q, sl[0])), sl[0] };
+                tl = new List<T>[] { SubtractPoly(tl[1], MultiplyPoly(q, tl[0])), tl[0] };
             }
 
             t = tl[1];
             s = sl[1];
-            if (LeadingCoeff(bc) != zero)
+            if (!baseField.IsEqual(LeadingCoeff(bc), zero))
                 return bc;
             else
-                return new List<GFElement> { Scalar(1) };
-        }
-        public void Gauss(List<List<GFElement>> m, List<GFElement> y)
-        {
-            //for (int i = 0; i < m.Count; i++)
-            //    Program.Print(m[i]);
-            //Console.WriteLine();
-            //Program.Print(y);
-            //Console.WriteLine();
-
-            // implication: matrix is square
-            if (m.Count != y.Count)
-                throw new Exception();
-
-            for (int j = 0; j < m.Count; j++)
-            {
-                bool zeroCol = true;
-                for (int i = j; i < m.Count; i++)
-                {
-                    if (m[i][j] != Scalar(0))
-                    {
-                        // swap i and j rows
-                        var temp = m[i];
-                        m[i] = m[j];
-                        m[j] = temp;
-
-                        GFElement tempi = y[i];
-                        y[i] = y[j];
-                        y[j] = tempi;
-
-                        zeroCol = false;
-                        break;
-                    }
-                }
-
-                if (zeroCol)
-                    continue;
-
-                var inv = Inverse(m[j][j]);
-                m[j] = MultiplyPoly(m[j], new List<GFElement> { inv });
-                y[j] = Multiply(y[j], inv);
-
-
-
-                for (int i = 0; i < m.Count; i++)
-                    if (i != j)
-                    {
-                        m[i] = SubtractPoly(m[i], MultiplyPoly(m[j], new List<GFElement> { m[i][j] }));
-                        y[i] = Subtract(y[i], Multiply(y[j], m[i][j]));
-                    }
-
-                //for (int i = 0; i < m.Count; i++)
-                //    Program.Print(m[i]);
-                //Console.WriteLine();
-                //Program.Print(y);
-                //Console.WriteLine();
-            }
-
-            //for (int i = 0; i < m.Count; i++)
-            //    Program.Print(m[i]);
-            //Console.WriteLine();
-            //Program.Print(y);
+                return new List<T> { baseField.Scalar(1) };
         }
 
-        public static bool operator ==(GaloisField a, GaloisField b)
+        public GFElement<T> Clone(GFElement<T> a)
         {
-            if (a.dimension != b.dimension || a.characteristic != b.characteristic)
+            var p = new List<T>();
+            foreach (var el in a.p)
+                p.Add(baseField.Clone(el));
+            return new GFElement<T>(p, this);
+        }
+
+        public BigInteger Size()
+        {
+            return size;
+        }
+
+        public int Characteristic()
+        {
+            return baseField.Characteristic();
+        }
+
+        public bool IsEqual(IField<GFElement<T>> b)
+        {
+            return this == (GaloisField<T>)b;
+        }
+
+        public static bool operator ==(GaloisField<T> a, GaloisField<T> b)
+        {
+            if (a.dimension != b.dimension || !a.baseField.IsEqual(b.baseField))
                 return false;
             for (int i = 0; i < a.dimension; i++)
-                if (a.primitive[i] != b.primitive[i])
+                if (!a.baseField.IsEqual(a.primitive[i], b.primitive[i]))
                     return false;
 
             return true;
         }
-        public static bool operator !=(GaloisField a, GaloisField b)
+        public static bool operator !=(GaloisField<T> a, GaloisField<T> b)
         {
             return !(a == b);
         }
     }
-    public class GaloisFieldExtension
+    public class ECP<T>
     {
-        public int dimension { get; }
-        private List<GFElement> primitive = null;
-        readonly public GaloisField baseField;
-        public BigInteger size { get; }
-        public static ExtensionElement nonSquare = null;
+        public GFElement<T> x { get; }
+        public GFElement<T> y { get; }
 
-        public GaloisFieldExtension(GaloisField baseField, List<int> primitive)
-        {
-            this.baseField = baseField;
-            dimension = primitive.Count - 1;
-            this.primitive = (from el in primitive select baseField.Scalar(el)).ToList();
-            size = BigInteger.Pow(baseField.size, dimension);
-        }
-        public ExtensionElement Inverse(ExtensionElement a)
-        {
-            if (baseField.Degree(a.p) == 0)
-                return new ExtensionElement(new List<GFElement> { baseField.Inverse(a.p[0]) }, this);
+        public GaloisField<T> field { get; }
 
-            List<GFElement> inv, s;
-            var gcd = baseField.EuclidPoly(a.p, primitive, out inv, out s);
-            var res = new ExtensionElement(inv, this);
-            return baseField.Inverse(gcd[0]) * res;
-        }
-
-        public List<GFElement> FixRepresentation(List<GFElement> polynomial)
+        public ECP(GFElement<T> x, GFElement<T> y)
         {
-            List<GFElement> copy = new List<GFElement>(polynomial);
-            while (copy.Count < dimension)
-                copy.Add(baseField.Scalar(0));
-            if (copy.Count > dimension)
+            if (x.field == y.field)
             {
-                var temp = new List<GFElement>();
-                copy = baseField.RemainderPoly(copy, primitive, out temp);
-                copy.RemoveRange(dimension, copy.Count - dimension);
+                this.x = x;
+                this.y = y;
+                field = x.field;
             }
-
-            return copy;
         }
-        public bool IsEqual(ExtensionElement a, ExtensionElement b)
+
+        public static bool operator ==(ECP<T> a, ECP<T> b)
         {
-            // implication: elements from the same field
-            List<GFElement> ap = a.p, bp = b.p;
-            for (int i = 0; i < ap.Count; i++)
-                if (ap[i] != bp[i])
-                    return false;
-            return true;
-        }
-        public ExtensionElement Pow(ExtensionElement a, BigInteger k)
-        {
-            ExtensionElement res = null;
-            ExtensionElement last = a;
-
-            while (true)
-            {
-                if (k % 2 == 1)
-                {
-                    if (!(res is null))
-                        res = res * last;
-                    else
-                        res = last;
-                }
-
-                k /= 2;
-                if (k == 0)
-                    break;
-                last = last * last;
-            }
-
-            if (res is null)
-                return new ExtensionElement(new List<GFElement> { baseField.Scalar(1) }, this);
-
-            return res;
-        }
-        public ExtensionElement RandomNonZero(int seed = -1)
-        {
-            var rand = new Random();
-            if (seed >= 0)
-                rand = new Random(seed);
-
-            var poly = new List<GFElement>(dimension);
-            bool zero = true;
-
-            while (zero)
-            {
-                poly.Clear();
-                for (int i = 0; i < dimension; i++)
-                {
-                    if (rand.Next() % baseField.size == 0)
-                        poly.Add(baseField.Scalar(0));
-                    else
-                    {
-                        poly.Add(baseField.RandomNonZero(seed >= 0 ? seed + i : -1));
-                        zero = false;
-                    }
-                }
-            }
-
-            return new ExtensionElement(poly, this);
+            return a.x == b.x && a.y == b.y;
         }
 
-        public static List<ExtensionElement> Root(ExtensionElement a)
-        {
-            if (a.field.size % 2 == 1)
-            {
-                // quadratic residue check
-                if (a.field.Pow(a, (a.field.size - 1) / 2) == new ExtensionElement(new List<GFElement> { a.field.baseField.Scalar(1) }, a.field))
-                {
-                    if (a.field.size % 4 == 3)
-                    {
-                        var root = a.field.Pow(a, (a.field.size + 1) / 4);
-                        return new List<ExtensionElement> { root, -root };
-                    }
-                    else if (a.field.size % 4 == 1)
-                    {
-                        // tonelli - shanks
-                        BigInteger p1 = a.field.size - 1;
-                        BigInteger odd = p1;
-
-                        int degree2 = 0;
-                        while (odd % 2 == 0)
-                        {
-                            odd /= 2;
-                            degree2++;
-                        }
-
-                        if (nonSquare is not null && a.field != nonSquare.field)
-                            nonSquare = null;
-
-                        while (nonSquare is null)
-                        {
-                            var re = a.field.RandomNonZero();
-                            if (a.field.Pow(re, p1 / 2) == new ExtensionElement(new List<GFElement> { a.field.baseField.Scalar(-1) }, a.field))
-                                nonSquare = re;
-                        }
-
-                        // precalculate all necessary powers
-                        var apow = new List<ExtensionElement>();
-                        var repow = new List<ExtensionElement>();
-                        for (int i = 0; i < degree2; i++)
-                        {
-                            if (i == 0)
-                            {
-                                apow.Add(a.field.Pow(a, (odd + 1) / 2));
-                                repow.Add(a.field.Pow(nonSquare, odd));
-                            }
-                            else if (i == 1)
-                            {
-                                apow.Add(a.field.Pow(a, odd));
-                                repow.Add(repow[i - 1] * repow[i - 1]);
-                            }
-                            else
-                            {
-                                apow.Add(apow[i - 1] * apow[i - 1]);
-                                repow.Add(repow[i - 1] * repow[i - 1]);
-                            }
-                        }
-
-                        int n = 0;
-                        BigInteger k = 1;
-                        for (int i = degree2 - 1; i >= 1; i--)
-                        {
-                            n++;
-                            if (apow[i] * a.field.Pow(repow[i], k) == new ExtensionElement(new List<GFElement> { a.field.baseField.Scalar(-1) }, a.field))
-                                k += BigInteger.Pow(2, n - 1);
-                        }
-
-                        var root = apow[0] * a.field.Pow(repow[0], k);
-                        return new List<ExtensionElement> { root, -root };
-                    }
-                }
-            }
-
-            return null;
-        }
-        public static List<ExtensionElement> RootBasic(ExtensionElement a)
-        {
-            if (a.field.size % 2 == 1)
-            {
-                // quadratic residue check
-                if (a.field.Pow(a, (a.field.size - 1) / 2) == new ExtensionElement(new List<GFElement> { a.field.baseField.Scalar(1) }, a.field))
-                {
-                    if (a.field.size % 4 == 3)
-                    {
-                        var root = a.field.Pow(a, (a.field.size + 1) / 4);
-                        return new List<ExtensionElement> { root, -root };
-                    }
-                    else if (a.field.size % 4 == 1)
-                    {
-                        // tonelli - shanks
-                        BigInteger p1 = a.field.size - 1;
-                        BigInteger p2 = p1 / 2;
-
-                        ExtensionElement neg = new ExtensionElement(new List<GFElement> { a.field.baseField.Scalar(-1) }, a.field);
-                        ExtensionElement re;
-                        while (true)
-                        {
-                            re = a.field.RandomNonZero();
-                            if (a.field.Pow(re, p2) == neg)
-                                break;
-                        }
-
-                        // precalculate all necessary powers
-                        int n = 0;
-                        BigInteger k = 1;
-                        BigInteger adeg, redeg;
-
-
-                        while ((p2 / BigInteger.Pow(2, n)) % 2 == 0)
-                        {
-                            n++;
-                            adeg = p2 / BigInteger.Pow(2, n);
-                            redeg = p1 * k / BigInteger.Pow(2, n);
-
-                            if (a.field.Pow(a, adeg) * a.field.Pow(re, redeg) == neg)
-                                k += BigInteger.Pow(2, n - 1);
-                        }
-
-                        adeg = (p2 / BigInteger.Pow(2, n) + 1) / 2;
-                        redeg = p1 * k / BigInteger.Pow(2, n + 1);
-
-                        var root = a.field.Pow(a, adeg) * a.field.Pow(re, redeg);
-                        return new List<ExtensionElement> { root, -root };
-                    }
-                }
-            }
-
-            return null;
-        }
-        public static ExtensionElement SolveCubicEquation3L(int a, GaloisFieldExtension field)
-        {
-            // solves equation y^3 - y = a in F_3^l
-
-            if (field.baseField.characteristic != 3 || a > 2 || a < 0)
-                throw new Exception();
-
-            var l = field.dimension;
-            var md = 3 * (l - 1) + 1;
-
-            var m = new List<List<GFElement>>(md);
-            for (int i = 0; i < md; i++)
-                m.Add(new List<GFElement>(Enumerable.Repeat(field.baseField.Scalar(0), md)));
-
-            for (int i = 0; i < l; i++)
-            {
-                m[3 * i][i] += field.baseField.Scalar(1);
-                m[i][i] -= field.baseField.Scalar(1);
-            }
-
-            for (int i = l; i < md; i++)
-                for (int j = 0; j <= l; j++)
-                    m[i - l + j][i] += field.primitive[j];
-
-            var y = new List<GFElement>(Enumerable.Repeat(field.baseField.Scalar(0), md));
-            y[0] = field.baseField.Scalar(a);
-
-
-            field.baseField.Gauss(m, y);
-
-            // m[0][0] will be 0, y wil be (a, 0 ... 0)
-            // find non-zero in first row, set it to a*inv
-            // other zero cols correspond to zeros
-            // figure out "real" variables based on non-zero "fake" variable
-
-            for (int j = 0; j < m.Count; j++)
-                if (m[0][j] != field.baseField.Scalar(0))
-                {
-                    var fake = a * field.baseField.Inverse(m[0][j]);
-                    var res = new List<GFElement>(l);
-                    res.Add(field.baseField.Scalar(0));
-                    for (int i = 1; i < l; i++)
-                        res.Add(-fake * m[i][j]);
-
-                    return new ExtensionElement(res, field);
-                }
-
-            throw new Exception();
-        }
-        public static bool operator ==(GaloisFieldExtension a, GaloisFieldExtension b)
-        {
-            if (a.dimension != b.dimension || a.baseField != b.baseField)
-                return false;
-            for (int i = 0; i < a.dimension; i++)
-                if (a.primitive[i] != b.primitive[i])
-                    return false;
-
-            return true;
-        }
-        public static bool operator !=(GaloisFieldExtension a, GaloisFieldExtension b)
+        public static bool operator !=(ECP<T> a, ECP<T> b)
         {
             return !(a == b);
         }
     }
-
-    //public interface Curve<T1,T2>
-    //{
-    //    public T1 RightSide(T1 x);
-    //    public bool IsOnTheCurve(T2 a);
-    //    public T2 Action(T2 a1, T2 a2);
-    //    public T2 Mult(T2 a, BigInteger k);
-    //}
-    public class EllipticCurve // curve of the form y^2 = x^3 + ax + b
+    public class EllipticCurve<T> // curve of the form y^2 = x^3 + ax + b
     {
-        public GaloisField field { get; private set; }
-        public GFElement a { get; private set; }
-        public GFElement b { get; private set; }
-        public EllipticCurve(GFElement a, GFElement b)
+        public GaloisField<T> field { get; private set; }
+        public GFElement<T> a { get; private set; }
+        public GFElement<T> b { get; private set; }
+        public EllipticCurve(GFElement<T> a, GFElement<T> b)
         {
             field = a.field;
             this.a = a;
             this.b = b;
         }
 
-        public GFElement RightSide(GFElement x)
+        public GFElement<T> RightSide(GFElement<T> x)
         {
             return x * x * x + a * x + b;
         }
-        public bool IsOnTheCurve(ECP a)
+        public bool IsOnTheCurve(ECP<T> a)
         {
+            if (a is null)
+                return true;
             return a.field.IsEqual(a.y * a.y, RightSide(a.x));
         }
-
-        private ECP Double(ECP a1)
+        private ECP<T> Double(ECP<T> a1)
         {
             var x1 = a1.x;
             var y1 = a1.y;
 
-            if (field.characteristic == 2)
+            if (field.Characteristic() == 2)
             {
-                throw new Exception($"Action not defined for field with characteristic {field.characteristic}");
+                throw new Exception($"Action not defined for field with characteristic {field.Characteristic()}");
             }
-            else if (field.characteristic == 3)
+            else if (field.Characteristic() == 3)
             {
                 //var y2 = 2 * y1;
                 //var y2inv = field.Inverse(y2);
@@ -982,159 +516,41 @@ namespace HyperellipticCurves
                 var s = a / (2 * y1);
                 var x3 = s * s - 2 * x1;
                 var y3 = s * (x1 - x3) - y1;
-                return new ECP(x3, y3);
+                return new ECP<T>(x3, y3);
             }
             else
             {
                 var s = (3 * x1 * x1 + a) / (2 * y1);
                 var x3 = s * s - 2 * x1;
                 var y3 = s * (x1 - x3) - y1;
-                return new ECP(x3, y3);
+                return new ECP<T>(x3, y3);
             }
 
         }
-        private ECP Add(ECP a1, ECP a2)
+        private ECP<T> Add(ECP<T> a1, ECP<T> a2)
         {
             var x1 = a1.x;
             var x2 = a2.x;
             var y1 = a1.y;
             var y2 = a2.y;
 
-            switch (field.characteristic)
+            switch (field.Characteristic())
             {
                 case 2:
-                    throw new Exception($"Action not defined for field with characteristic {field.characteristic}");
+                    throw new Exception($"Action not defined for field with characteristic {field.Characteristic()}");
                 default: // the same for characteristic >= 3
                     var s = (y2 - y1) / (x2 - x1);
                     var x3 = s * s - x2 - x1;
                     var y3 = s * (x1 - x3) - y1;
-                    return new ECP(x3, y3);
+                    return new ECP<T>(x3, y3);
             }
         }
-
-        public ECP Action(ECP a1, ECP a2)
+        public ECP<T> Action(ECP<T> a1, ECP<T> a2)
         {
             if (a1.field != a2.field)
                 throw new Exception();
 
             var field = a1.field;
-
-            var x1 = a1.x;
-            var x2 = a2.x;
-            var y1 = a1.y;
-            var y2 = a2.y;
-
-            if (field.IsEqual(x1, x2))
-            {
-                if (field.IsEqual(y1, -y2))
-                {
-                    return null;
-                }
-                else
-                {
-                    // double
-                    return Double(a1);
-                }
-            }
-            else
-            {
-                // add
-                return Add(a1, a2);
-            }
-        }
-
-        public ECP Mult(ECP a, BigInteger k)
-        {
-            ECP res = null;
-            ECP last = a;
-
-            while (last is not null)
-            {
-                if (k % 2 == 1)
-                {
-                    if (res is not null)
-                        res = Action(res, last);
-                    else
-                        res = last;
-                }
-
-                k /= 2;
-                if (k == 0)
-                    break;
-                last = Action(last, last);
-                //Program.Print(last.x);
-            }
-
-            return res;
-        }
-    }
-    public class EllipticCurveExtension
-    {
-        public GaloisFieldExtension field { get; private set; }
-        public ExtensionElement a { get; private set; }
-        public ExtensionElement b { get; private set; }
-        public EllipticCurveExtension(ExtensionElement a, ExtensionElement b)
-        {
-            field = a.field;
-            this.a = a;
-            this.b = b;
-        }
-        private ECPExtension Double(ECPExtension a1)
-        {
-            var x1 = a1.x;
-            var y1 = a1.y;
-
-            if (field.baseField.characteristic == 2)
-            {
-                throw new Exception($"Action not defined for field with characteristic {field.baseField.characteristic}");
-            }
-            else if (field.baseField.characteristic == 3)
-            {
-                //var y2 = 2 * y1;
-                //var y2inv = field.Inverse(y2);
-                //var check = y2 * y2inv;
-                //Console.WriteLine("check");
-                //Program.Print(check);
-                //Console.WriteLine();
-                //var test = a * y2inv;
-
-                var s = a / (field.baseField.Scalar(2) * y1);
-                var x3 = s * s - field.baseField.Scalar(2) * x1;
-                var y3 = s * (x1 - x3) - y1;
-                return new ECPExtension(x3, y3);
-            }
-            else
-            {
-                var s = (field.baseField.Scalar(3) * x1 * x1 + a) / (field.baseField.Scalar(2) * y1);
-                var x3 = s * s - field.baseField.Scalar(2) * x1;
-                var y3 = s * (x1 - x3) - y1;
-                return new ECPExtension(x3, y3);
-            }
-
-        }
-        private ECPExtension Add(ECPExtension a1, ECPExtension a2)
-        {
-            var x1 = a1.x;
-            var x2 = a2.x;
-            var y1 = a1.y;
-            var y2 = a2.y;
-
-            switch (field.baseField.characteristic)
-            {
-                case 2:
-                    throw new Exception($"Action not defined for field with characteristic {field.baseField.characteristic}");
-                default: // the same for characteristic >= 3
-                    var s = (y2 - y1) / (x2 - x1);
-                    var x3 = s * s - x2 - x1;
-                    var y3 = s * (x1 - x3) - y1;
-                    return new ECPExtension(x3, y3);
-            }
-        }
-
-        public ECPExtension Action(ECPExtension a1, ECPExtension a2)
-        {
-            if (a1.field != a2.field)
-                throw new Exception();
 
             var x1 = a1.x;
             var x2 = a2.x;
@@ -1159,20 +575,13 @@ namespace HyperellipticCurves
                 return Add(a1, a2);
             }
         }
-
-        public bool IsOnTheCurve(ECPExtension a)
+        public ECP<T> Mult(ECP<T> a, BigInteger k)
         {
-            return a.y * a.y == RightSide(a.x);
-        }
-
-        public ECPExtension Mult(ECPExtension a, BigInteger k)
-        {
-            ECPExtension res = null;
-            ECPExtension last = a;
+            ECP<T> res = null;
+            ECP<T> last = a;
 
             while (last is not null)
             {
-                Console.WriteLine(k);
                 if (k % 2 == 1)
                 {
                     if (res is not null)
@@ -1182,6 +591,7 @@ namespace HyperellipticCurves
                 }
 
                 k /= 2;
+                //Console.WriteLine(k);
                 if (k == 0)
                     break;
                 last = Action(last, last);
@@ -1190,30 +600,32 @@ namespace HyperellipticCurves
 
             return res;
         }
-
-        public ExtensionElement RightSide(ExtensionElement x)
+        public static bool operator ==(EllipticCurve<T> a, EllipticCurve<T> b)
         {
-            return x * x * x + a * x + b;
+            return a.field == b.field && a.a == b.a && a.b == b.b;
+        }
+        public static bool operator !=(EllipticCurve<T> a, EllipticCurve<T> b)
+        {
+            return !(a == b);
         }
     }
 
     public class EllipticCurveManager
     {
-        public EllipticCurve curve { get; private set; }
-        public EllipticCurveExtension curve6 { get; private set; }
+        public EllipticCurve<int> curve { get; private set; }
+        public EllipticCurve<GFElement<int>> curve6 { get; private set; }
 
-        //GFElement root;
+        BigInteger m;
+        public BigInteger q { get; private set; }
+        public ECP<int> pq { get; private set; }
+        public ECP<GFElement<int>> s { get; private set; }
 
-        BigInteger? m;
-        public BigInteger? q { get; private set; }
+        GFElement<GFElement<int>> u;
+        GFElement<GFElement<int>> rp;
+        GFElement<GFElement<int>> rm;
 
-        ExtensionElement u;
-        ExtensionElement rp;
-        ExtensionElement rm;
-
-        static EllipticCurveExtension lastCurve;
+        static EllipticCurve<GFElement<int>> lastCurve;
         static BigInteger order;
-        static ECPExtension s;
         private class FieldData
         {
             public FieldData(int dimension, Dictionary<int, int> p1)
@@ -1225,19 +637,41 @@ namespace HyperellipticCurves
             public int dimension;
             public Dictionary<int, int> p1;
         }
-        public EllipticCurveManager(List<int> a, List<int> b, int l, bool positive)
+        private class CurveData
+        {
+            public CurveData(int l, bool positive, string q, List<int> pqx, List<int> pqy, List<List<int>> sx, List<List<int>> sy)
+            {
+                this.l = l;
+                this.positive = positive;
+                this.q = q;
+                this.pqx = pqx;
+                this.pqy = pqy;
+                this.sx = sx;
+                this.sy = sy;
+            }
+
+            public int l;
+            public bool positive;
+            public string q;
+            public List<int> pqx;
+            public List<int> pqy;
+            public List<List<int>> sx;
+            public List<List<int>> sy;
+        }
+        public EllipticCurveManager(List<int> a, List<int> b, int l, bool positive, bool initCurveData = false)
         {
             // construct necessary fields
             // smaller field requires primitive polynomial to convert elements
-            GaloisField field;
-            GaloisFieldExtension field6;
+            GaloisField<int> field;
+            GaloisField<GFElement<int>> field6;
             (field, field6) = InitFields(l, positive);
-            InitMQ(field, positive);
+            curve = new(new GFElement<int>(a, field), new GFElement<int>(b, field));
+            curve6 = new(new(new List<GFElement<int>> { curve.a }, field6), new(new List<GFElement<int>> { curve.b }, field6));
 
-            curve = new EllipticCurve(new GFElement(a, field), new GFElement(b, field));
-            curve6 = new EllipticCurveExtension(new(new List<GFElement> { curve.a }, field6), new(new List<GFElement> { curve.b }, field6));
+            if (initCurveData)
+                InitCurveData(field, field6, positive);
         }
-        private BigInteger BonehCurveSize(GaloisField field, bool positive)
+        private BigInteger BonehCurveSize(GaloisField<int> field, bool positive)
         {
             if (positive)
             {
@@ -1258,19 +692,58 @@ namespace HyperellipticCurves
                     throw new Exception("Wrong field dimension");
             }
         }
-        private void InitMQ(GaloisField field, bool positive)
+        private void InitCurveData(GaloisField<int> field, GaloisField<GFElement<int>> field6, bool positive)
         {
             m = BonehCurveSize(field, positive);
-            var factors = PrimeFactors(m ?? -1);
-            q = factors?.Max<BigInteger>();
+            
+            string fileName = "curves.json";
+            List<CurveData> source = null;
 
-            if (q == null)
-                Console.WriteLine($"Factorization for m = {m} missing, q is set to null");
+            JsonSerializerOptions options = new();
+            options.IncludeFields = true;
+
+            using (StreamReader r = new StreamReader(fileName))
+            {
+                string json = r.ReadToEnd();
+                source = JsonSerializer.Deserialize<List<CurveData>>(json, options);
+                source.RemoveAll((CurveData data) => data.l == 0);
+
+                for (int i = 0; i < source.Count; i++)
+                {
+                    var data = source[i];
+                    if (data.l == field.dimension && data.positive == positive)
+                    {
+                        q = BigInteger.Parse(data.q);
+                        pq = new(new(data.pqx, field), new(data.pqy, field));
+                        s = new(new((from list in data.sx select new GFElement<int>(list, field)).ToList(), 
+                            field6), new((from list in data.sy select new GFElement<int>(list, field)).ToList(), 
+                            field6));
+                        break;
+                    }
+                }
+            }
+
+            if (pq is null)
+            {
+                var factors = PrimeFactors(m);
+                q = factors.Max<BigInteger>();
+
+                pq = RandomPointOfPrimeOrder(q, curve, true);
+                s = RandomPointOfPrimeOrder(q, curve6, false);
+                source.Add(new(field.dimension, positive, q.ToString(), pq.x.p, pq.y.p,
+                    (from el in s.x.p select el.p).ToList(),
+                    (from el in s.y.p select el.p).ToList()));
+                source.Sort((data1, data2) => data1.l - data2.l);
+
+                string json = JsonSerializer.Serialize(source, options);
+                File.WriteAllText(fileName, json);
+            }
+
         }
-        private (GaloisField field, GaloisFieldExtension field6) InitFields(int l, bool positive)
+        private (GaloisField<int> field, GaloisField<GFElement<int>> field6) InitFields(int l, bool positive)
         {
-            GaloisField field = null;
-            GaloisFieldExtension field6 = null;
+            GaloisField<int> field = null;
+            GaloisField<GFElement<int>> field6 = null;
 
             string fileName = "fields.json";
             List<FieldData> source = null;
@@ -1298,17 +771,17 @@ namespace HyperellipticCurves
                         p6[1] = 1;
                         p6[6] = 1;
 
-                        field = new GaloisField(3, p);
-                        field6 = new GaloisFieldExtension(field, p6);
+                        field = new(new PrimeField(3), p);
+                        field6 = new(field, p6);
 
                         // need to define automorphism
-                        var tempField = new GaloisField(3, p6);
+                        var tempField = new GaloisField<int>(new PrimeField(3), p6);
 
-                        var y2 = GaloisField.Root(new GFElement(new List<int> { -1 }, tempField))[0];
-                        var y3 = GaloisField.SolveCubicEquation3L(positive ? 1 : 2, tempField);
+                        var y2 = GaloisField<int>.Root(new GFElement<int>(new List<int> { -1 }, tempField));
+                        var y3 = Methods.SolveCubicEquation3L(positive ? 1 : 2, tempField);
 
                         u = new((from e in y2.p select field.Scalar(e)).ToList(), field6);
-                        rm = new((from e in y3.p select field.Scalar(e)).ToList(), field6);
+                        rm = new((from e in y3 select field.Scalar(e)).ToList(), field6);
                         rp = -rm;
 
                         break;
@@ -1453,27 +926,24 @@ namespace HyperellipticCurves
                 }
             }
         }
-        public ECP RandomPointOfPrimeOrder(BigInteger order)
+        public static ECP<T> RandomPointOfPrimeOrder<T>(BigInteger order, EllipticCurve<T> c, bool mustBeOfThisOrder)
         {
-            EllipticCurve c = curve;
-
-            ECP p = null;
+            ECP<T> p = null;
             while (true)
             {
-                GFElement px;
-                GFElement py;
+                GFElement<T> px, py;
 
                 px = c.field.RandomNonZero();
-                var roots = GaloisField.Root(c.RightSide(px));
-                if (roots != null)
-                    py = roots[0];
+                var root = GaloisField<T>.Root(c.RightSide(px));
+                if (root is not null)
+                    py = root;
                 else
                     continue;
 
-                p = new ECP(px, py);
+                p = new ECP<T>(px, py);
                 var pq = c.Mult(p, order);
 
-                if (pq is null)
+                if ((pq is null && mustBeOfThisOrder) || (pq is not null && !mustBeOfThisOrder))
                     break;
             }
 
@@ -1481,11 +951,10 @@ namespace HyperellipticCurves
         }
         class HPQ
         {
-            ECPExtension p;
-            ECPExtension q;
-            ExtensionElement lambda;
+            ECP<GFElement<int>> p, q;
+            GFElement<GFElement<int>> lambda;
 
-            public HPQ(ECPExtension p, ECPExtension q, ExtensionElement a)
+            public HPQ(ECP<GFElement<int>> p, ECP<GFElement<int>> q, GFElement<GFElement<int>> a)
             {
                 this.p = p;
                 this.q = q;
@@ -1495,12 +964,12 @@ namespace HyperellipticCurves
                     if (p.field.IsEqual(p.y, q.y))
                     {
                         // tangent
-                        if (p.y == new ExtensionElement(new List<GFElement> { p.field.baseField.Scalar(0) }, p.field))
+                        if (p.y == new GFElement<GFElement<int>>(new List<GFElement<int>> { p.field.baseField.Scalar(0) }, p.field))
                             lambda = null;
-                        else if (p.field.baseField.characteristic == 3)
-                            lambda = a / (p.field.baseField.Scalar(2) * p.y);
-                        else if (p.field.baseField.characteristic > 3)
-                            lambda = (p.field.baseField.Scalar(3) * p.x * p.x + a) / (p.field.baseField.Scalar(2) * p.y);
+                        else if (p.field.Characteristic() == 3)
+                            lambda = a / (p.field.Scalar(2) * p.y);
+                        else if (p.field.Characteristic() > 3)
+                            lambda = (p.field.Scalar(3) * p.x * p.x + a) / (p.field.Scalar(2) * p.y);
                         else
                             throw new Exception("Slope not defined");
                     }
@@ -1517,7 +986,7 @@ namespace HyperellipticCurves
                 }
             }
 
-            public ExtensionElement Value(ECPExtension a)
+            public GFElement<GFElement<int>> Value(ECP<GFElement<int>> a)
             {
                 if (lambda is not null)
                 {
@@ -1529,113 +998,51 @@ namespace HyperellipticCurves
                     return a.x - p.x;
             }
         }
-
-        static ExtensionElement EvaluateF(List<HPQ> f, ECPExtension a)
+        static List<GFElement<GFElement<int>>> MillerUpdated(ECP<GFElement<int>> p, List<ECP<GFElement<int>>> r, BigInteger n, EllipticCurve<GFElement<int>> curve)
         {
-            var res = new ExtensionElement(new List<GFElement> { a.field.baseField.Scalar(1) }, a.field);
-            foreach (HPQ h in f)
+            var binary = new List<int>();
+            while (n != 1)
             {
-                if (h is null)
-                    res = res * res;
-                else
-                    res = res * h.Value(a);
+                binary.Add((int)(n % 2));
+                n /= 2;
+            }
+            binary.Add(1);
+
+            var t = binary.Count - 2;
+
+            var res = new List<GFElement<GFElement<int>>>();
+            for (int i = 0; i < r.Count; i++)
+                res.Add(new GFElement<GFElement<int>>(new List<GFElement<int>> { curve.field.baseField.Scalar(1) }, curve.field));
+            var T = p;
+
+            for (int i = t; i >= 0; i--)
+            {
+                Console.WriteLine(i);
+                for (int j = 0; j < r.Count; j++)
+                    res[j] *= res[j];
+
+                var hpq = new HPQ(T, T, curve.a);
+                for (int j = 0; j < r.Count; j++)
+                    res[j] *= hpq.Value(r[j]);
+
+                T = curve.Action(T, T);
+
+                if (binary[i] == 1)
+                {
+                    hpq = new HPQ(T, p, curve.a);
+                    for (int j = 0; j < r.Count; j++)
+                        res[j] *= hpq.Value(r[j]);
+                    T = curve.Action(T, p);
+                }
             }
 
             return res;
         }
-        static List<HPQ> Miller(ECPExtension p, BigInteger n, EllipticCurveExtension curve)
+        static public GFElement<GFElement<int>> WeilPairing(ECP<GFElement<int>> p, ECP<GFElement<int>> q, BigInteger n, EllipticCurve<GFElement<int>> curve, ECP<GFElement<int>> s = null)
         {
-            var binary = new List<int>();
-            while (n != 1)
-            {
-                binary.Add((int)(n % 2));
-                n /= 2;
-            }
-            binary.Add(1);
-
-            var t = binary.Count - 2;
-
-            var f = new List<HPQ>();
-            var T = p;
-            for (int i = t; i >= 0; i--)
-            {
-                f.Add(null);
-                f.Add(new HPQ(T, T, curve.a));
-
-                T = curve.Action(T, T);
-                if (binary[i] == 1)
-                {
-                    f.Add(new HPQ(T, p, curve.a));
-                    T = curve.Action(T, p);
-                }
-            }
-
-            return f;
-        }
-        static ExtensionElement MillerUpdated(ECPExtension p, ECPExtension r, BigInteger n, EllipticCurveExtension curve)
-        {
-            var binary = new List<int>();
-            while (n != 1)
-            {
-                binary.Add((int)(n % 2));
-                n /= 2;
-            }
-            binary.Add(1);
-            //binary.Reverse();
-
-            var t = binary.Count - 2;
-
-            var f = new ExtensionElement(new List<GFElement> { curve.field.baseField.Scalar(1) }, curve.field);
-            var T = p;
-            //int degree = 1;
-            for (int i = t; i >= 0; i--)
-            {
-                Console.WriteLine(i);
-                f *= f;
-                //degree *= 2;
-                f *= new HPQ(T, T, curve.a).Value(r);
-
-                T = curve.Action(T, T);
-                
-
-                if (binary[i] == 1)
-                {
-                    f *= new HPQ(T, p, curve.a).Value(r);
-                    //degree += 1;
-                    T = curve.Action(T, p);
-                }
-            }
-            //Console.WriteLine(degree);
-
-            return f;
-        }
-        static public ExtensionElement WeilPairing(ECPExtension p, ECPExtension q, BigInteger n, EllipticCurveExtension curve)
-        {
-            if (n != order || curve != lastCurve)
-            {
-                lastCurve = curve;
-                order = n;
-                s = null;
-            }
-
-            while (s is null)
-            {
-                Console.WriteLine("trying to find s");
-                var sx = p.field.RandomNonZero();
-                var sy2 = curve.RightSide(sx);
-                var sy = GaloisFieldExtension.Root(sy2);
-
-                if (sy == null)
-                    continue;
-                else
-                    Console.WriteLine("square");
-
-                s = new ECPExtension(sx, sy[0]);
-
-                if (curve.Mult(s, n) is not null)
-                    break;
-            }
-            Console.WriteLine("Found s");
+            if (s is null)
+                s = RandomPointOfPrimeOrder(n, curve, false);
+            
             //var ns = curve.Mult(s, n);
             //Program.Print(MillerUpdated(s, ns, n, curve));
 
@@ -1646,7 +1053,7 @@ namespace HyperellipticCurves
 
             //var fp = Miller(p, n, curve);
             //var fq = Miller(q, n, curve);
-            var sn = new ECPExtension(s.x, -s.y);
+            var sn = new ECP<GFElement<int>>(s.x, -s.y);
             //Console.WriteLine(curve.IsOnTheCurve(sn));
             //Console.WriteLine(curve.IsOnTheCurve(s));
 
@@ -1655,11 +1062,17 @@ namespace HyperellipticCurves
             //var num = EvaluateF(fp, curve.Action(q, s)) / EvaluateF(fp, s);
             //var den = EvaluateF(fq, curve.Action(p, sn)) / EvaluateF(fq, sn);
 
-            var num = MillerUpdated(p, curve.Action(q, s), n, curve) / MillerUpdated(p, s, n, curve);
-            var den = MillerUpdated(q, curve.Action(p, sn), n, curve) / MillerUpdated(q, sn, n, curve);
+            var args1 = new List<ECP<GFElement<int>>> { curve.Action(q, s), s };
+            var args2 = new List<ECP<GFElement<int>>> { curve.Action(p, sn), sn };
+
+            var res1 = MillerUpdated(p, args1, n, curve);
+            var res2 = MillerUpdated(q, args2, n, curve);
+
+            var num = res1[0] / res1[1];
+            var den = res2[0] / res2[1];
             return num / den;
         }
-        public ECP MapToGroup(byte[] m, float delta)
+        public ECP<int> MapToGroup(byte[] m, float delta)
         {
             int I = (int)Math.Ceiling(Math.Log2(Math.Log2(1 / delta)));
             int maxIter = (int)Math.Pow(2, I);
@@ -1688,27 +1101,20 @@ namespace HyperellipticCurves
                     h /= 3;
                 }
 
-                var x = new GFElement(poly, curve.field);
+                var x = new GFElement<int>(poly, curve.field);
 
-                var roots = GaloisField.Root(curve.RightSide(x));
-                if (roots == null)
+                var root = GaloisField<int>.Root(curve.RightSide(x));
+                if (root is null)
                     continue;
 
-                if (roots[0].p[0] > roots[1].p[0])
-                {
-                    // swap
-                    var temp = roots[0];
-                    roots[0] = roots[1];
-                    roots[1] = temp;
-                }
-
-                int index = 0;
+                if (root.p[0] > -root.p[0])
+                    root = -root;
                 if (b)
-                    index = 1;
-                var pm = new ECP(x, roots[index]);
+                    root = -root;
+                var pm = new ECP<int>(x, root);
 
                 var mult = this.m / this.q; // must know m and q
-                pm = curve.Mult(pm, mult ?? throw new Exception("m or q is null"));
+                pm = curve.Mult(pm, mult);
 
                 if (pm is not null)
                     return pm;
@@ -1716,13 +1122,13 @@ namespace HyperellipticCurves
 
             throw new Exception();
         }
-        public ECPExtension Auto6L(ECPExtension a)
+        public ECP<GFElement<int>> Auto6L(ECP<GFElement<int>> a)
         {
             // check if curve is positive for small curve, that's ok
-            if (curve.b == new GFElement(new List<int> { 1 }, curve.field))
-                return new ECPExtension(-a.x + rp, u * a.y); // +++
+            if (curve.b == new GFElement<int>(new List<int> { 1 }, curve.field))
+                return new ECP<GFElement<int>>(-a.x + rp, u * a.y); // +++
             else
-                return new ECPExtension(-a.x + rm, u * a.y); // ---
+                return new ECP<GFElement<int>>(-a.x + rm, u * a.y); // ---
         }
     }
 }
