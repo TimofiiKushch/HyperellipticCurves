@@ -268,11 +268,6 @@ namespace HyperellipticCurves
                 //Program.Print(y);
                 //Console.WriteLine();
             }
-
-            //for (int i = 0; i < m.Count; i++)
-            //    Program.Print(m[i]);
-            //Console.WriteLine();
-            //Program.Print(y);
         }
     }
 }

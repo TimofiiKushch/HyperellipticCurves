@@ -216,7 +216,6 @@ namespace HyperellipticCurves
 
             return null;
         }
-
         public GFElement<T> RandomNonZero(int seed = -1)
         {
             var rand = new Random();
@@ -806,52 +805,6 @@ namespace HyperellipticCurves
                 res.Add(BigInteger.Parse("49269609804781974450852068861184694669"));
                 return res;
             }
-            // possible non-zero elements of a field
-            else if (m == BigInteger.Pow(3, 7) - 1)
-            {
-                res.Add(BigInteger.Parse("2"));
-                res.Add(BigInteger.Parse("1093"));
-                return res;
-            }
-            else if (m == BigInteger.Pow(3, 42) - 1)
-            {
-                res.Add(BigInteger.Parse("2"));
-                res.Add(BigInteger.Parse("7"));
-                res.Add(BigInteger.Parse("13"));
-                res.Add(BigInteger.Parse("547"));
-                res.Add(BigInteger.Parse("1093"));
-                res.Add(BigInteger.Parse("2269"));
-                res.Add(BigInteger.Parse("368089"));
-                return res;
-            }
-            else if (m == BigInteger.Pow(3, 79) - 1)
-            {
-                res.Add(BigInteger.Parse("2"));
-                res.Add(BigInteger.Parse("432853009"));
-                res.Add(BigInteger.Parse("392038110671"));
-                res.Add(BigInteger.Parse("145171177264407947"));
-                return res;
-            }
-            else if (m == BigInteger.Pow(3, 474) - 1)
-            {
-                res.Add(BigInteger.Parse("2"));
-                res.Add(BigInteger.Parse("7"));
-                res.Add(BigInteger.Parse("13"));
-                res.Add(BigInteger.Parse("14221"));
-                res.Add(BigInteger.Parse("66361"));
-                res.Add(BigInteger.Parse("2275201"));
-                res.Add(BigInteger.Parse("37520893"));
-                res.Add(BigInteger.Parse("432853009"));
-                res.Add(BigInteger.Parse("327220181191"));
-                res.Add(BigInteger.Parse("392038110671"));
-                res.Add(BigInteger.Parse("145171177264407947"));
-                res.Add(BigInteger.Parse("567239060331150635317"));
-                res.Add(BigInteger.Parse("217536018992883276988362961"));
-                res.Add(BigInteger.Parse("52802131282482966001751707837"));
-                res.Add(BigInteger.Parse("49269609804781974450852068861184694669"));
-                res.Add(BigInteger.Parse("94251934933904430405353683133566414129"));
-                return res;
-            }
 
             return null;
         }
@@ -1042,25 +995,10 @@ namespace HyperellipticCurves
         {
             if (s is null)
                 s = RandomPointOfPrimeOrder(n, curve, false);
-            
-            //var ns = curve.Mult(s, n);
-            //Program.Print(MillerUpdated(s, ns, n, curve));
 
-
-            //Program.Print(s.x);
-            //Program.Print(s.y);
             //s = new(new(new List<GFElement> { curve.field.baseField.Scalar(0) }, curve.field), new(new List<GFElement> { curve.field.baseField.Scalar(36) }, curve.field));
 
-            //var fp = Miller(p, n, curve);
-            //var fq = Miller(q, n, curve);
             var sn = new ECP<GFElement<int>>(s.x, -s.y);
-            //Console.WriteLine(curve.IsOnTheCurve(sn));
-            //Console.WriteLine(curve.IsOnTheCurve(s));
-
-            //Program.Print(EvaluateF(fp, p));
-            //Program.Print(EvaluateF(fp, q));
-            //var num = EvaluateF(fp, curve.Action(q, s)) / EvaluateF(fp, s);
-            //var den = EvaluateF(fq, curve.Action(p, sn)) / EvaluateF(fq, sn);
 
             var args1 = new List<ECP<GFElement<int>>> { curve.Action(q, s), s };
             var args2 = new List<ECP<GFElement<int>>> { curve.Action(p, sn), sn };
@@ -1124,7 +1062,7 @@ namespace HyperellipticCurves
         }
         public ECP<GFElement<int>> Auto6L(ECP<GFElement<int>> a)
         {
-            // check if curve is positive for small curve, that's ok
+            // check if curve is positive for the small curve
             if (curve.b == new GFElement<int>(new List<int> { 1 }, curve.field))
                 return new ECP<GFElement<int>>(-a.x + rp, u * a.y); // +++
             else

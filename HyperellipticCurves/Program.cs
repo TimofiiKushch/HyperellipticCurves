@@ -20,6 +20,8 @@ namespace HyperellipticCurves
 
         }
 
+        // l - dimension of the field F_3^l
+        // if positive then curve is y^2 = x^3 + 2x + 1, else y^2 = x^3 + 2x + 2
         public static void SignatureScheme(int l, bool positive)
         {
             var rand = new Random();
@@ -29,9 +31,6 @@ namespace HyperellipticCurves
             var b = new List<int> { positive ? 1 : 2 };
 
             var cm = new EllipticCurveManager(a, b, l, positive, true);
-            //var test1 = cm.curve6.field.RandomNonZero();
-            //var test2 = cm.curve6.field.Inverse(test1);
-            //Console.ReadLine();
 
             // let's find P of order q
             // q is prime so just need qP = 0
@@ -66,7 +65,7 @@ namespace HyperellipticCurves
                 throw new Exception("No roots found: signature is invalid");
             var s = new ECP<int>(sm.x, y);
 
-            // convert everything to work in field6
+            // convert everything to work in F_3^6l
             var s6 = new ECP<GFElement<int>>(new(new List<GFElement<int>> { s.x }, cm.curve6.field), new(new List<GFElement<int>> { s.y }, cm.curve6.field));
             var p6 = new ECP<GFElement<int>>(new(new List<GFElement<int>> { p.x }, cm.curve6.field), new(new List<GFElement<int>> { p.y }, cm.curve6.field));
             var r6 = new ECP<GFElement<int>>(new(new List<GFElement<int>> { r.x }, cm.curve6.field), new(new List<GFElement<int>> { r.y }, cm.curve6.field));
@@ -79,7 +78,6 @@ namespace HyperellipticCurves
                 Console.WriteLine("Congratulations!");
             else
                 throw new Exception("Signature rejected");
-
         }
         
         public static void TestWeilPairing()
