@@ -7,6 +7,89 @@ using System.Numerics;
 
 namespace HyperellipticCurves
 {
+    public class CubicEquationSolver // solves x^3 - x = u
+    {
+        List<int> traceForm = new();
+        List<GFElement<int>> equationMatrix = new();
+        GaloisField<int> field;
+
+        public CubicEquationSolver(GaloisField<int> field)
+        {
+            if (field.Characteristic() != 3)
+                throw new Exception("Cubic equations are only defined for F_3^l");
+
+            this.field = field;
+            int l = field.dimension;
+
+            // precompute trace form
+            for (int i = 0; i < l; i++)
+            {
+                List<int> baseElement = new(Enumerable.Repeat(0, l));
+                baseElement[i] = 1;
+                var cur = new GFElement<int>(baseElement, field);
+                var sum = cur;
+
+                for (int j = 1; j < l; j++)
+                {
+                    var next = new List<int>(Enumerable.Repeat(0, 3*l - 2));
+                    for (int k = 0; k < l; k++)
+                        next[3 * k] = cur.p[k];
+                    cur = new GFElement<int>(next, field);
+                    sum += cur;
+                }
+
+                traceForm.Add(sum.p[0]);
+            }
+
+            // precompute equation matrix
+            for (int i = 0; i < l; i++)
+            {
+                List<int> baseElement = new(Enumerable.Repeat(0, 3*l - 2));
+                baseElement[i] -= 1;
+                baseElement[3 * i] += 1;
+                equationMatrix.Add(new GFElement<int>(baseElement, field));
+                Program.Print(equationMatrix[i]);
+            }
+        }
+
+        public int Trace(GFElement<int> x)
+        {
+            int sum = 0;
+            for (int i = 0; i < traceForm.Count; i++)
+                sum += traceForm[i] * x.p[i];
+            return Methods.NumRemainder(sum, field.Characteristic());
+        }
+        public GFElement<int> Solve(GFElement<int> u)
+        {
+            List<List<int>> m = new();
+            for (int i = 0; i < equationMatrix.Count; i++)
+            {
+                m.Add(new List<int>());
+                for (int j = 0; j < equationMatrix.Count; j++)
+                    m[i].Add(equationMatrix[j].p[i]);
+            }
+            var y = new List<int>(u.p);
+
+            //foreach (var l in m)
+            //    Program.Print(l);
+            //Program.Print(y);
+            //Console.WriteLine();
+
+            Methods.Gauss(m, y, (PrimeField)field.baseField);
+
+            //foreach (var l in m)
+            //    Program.Print(l);
+            //Program.Print(y);
+            //Console.Read();
+
+            if (y[m.Count - 1] != 0)
+                return null;
+            y.Insert(0, 0);
+            y.RemoveAt(m.Count);
+            return new GFElement<int>(y, field);
+        }
+    }
+
     class Methods
     {
         public static List<BigInteger> PrimeFactors(BigInteger a)
@@ -164,55 +247,6 @@ namespace HyperellipticCurves
                 b = 1;
             return b;
         }
-        public static List<int> SolveCubicEquation3L(int a, GaloisField<int> field)
-        {
-            // solves equation y^3 - y = a in F_3^l
-
-            if (field.Characteristic() != 3 || a > 2 || a < 0)
-                throw new Exception();
-
-            var l = field.dimension;
-            var md = 3 * (l - 1) + 1;
-
-            var m = new List<List<int>>(md);
-            for (int i = 0; i < md; i++)
-                m.Add(new List<int>(Enumerable.Repeat(0, md)));
-
-            for (int i = 0; i < l; i++)
-            {
-                m[3 * i][i] = field.baseField.Add(m[3 * i][i], 1);
-                m[i][i] = field.baseField.Subtract(m[i][i], 1);
-            }
-
-            for (int i = l; i < md; i++)
-                for (int j = 0; j <= l; j++)
-                    m[i - l + j][i] = field.baseField.Add(m[i - l + j][i], field.primitive[j]);
-
-            var y = new List<int>(Enumerable.Repeat(0, md));
-            y[0] = a;
-
-
-            Gauss(m, y, (PrimeField)field.baseField);
-
-            // m[0][0] will be 0, y wil be (a, 0 ... 0)
-            // find non-zero in first row, set it to a*inv
-            // other zero cols correspond to zeros
-            // figure out "real" variables based on non-zero "fake" variable
-
-            for (int j = 0; j < m.Count; j++)
-                if (m[0][j] != 0)
-                {
-                    var fake = a * field.baseField.Inverse(m[0][j]);
-                    var res = new List<int>(l);
-                    res.Add(0);
-                    for (int i = 1; i < l; i++)
-                        res.Add(-fake * m[i][j]);
-
-                    return res;
-                }
-
-            throw new Exception();
-        }
         public static void Gauss(List<List<int>> m, List<int> y, PrimeField field)
         {
             //for (int i = 0; i < m.Count; i++)
@@ -221,25 +255,27 @@ namespace HyperellipticCurves
             //Program.Print(y);
             //Console.WriteLine();
 
-            // implication: matrix is square
+            // implication: matrix is a square
             if (m.Count != y.Count)
                 throw new Exception();
 
+            int cur = 0;
             for (int j = 0; j < m.Count; j++)
             {
                 bool zeroCol = true;
-                for (int i = j; i < m.Count; i++)
+                //cur = j;
+                for (int i = cur; i < m.Count; i++)
                 {
                     if (m[i][j] != 0)
                     {
-                        // swap i and j rows
+                        // swap rows
                         var temp = m[i];
-                        m[i] = m[j];
-                        m[j] = temp;
+                        m[i] = m[cur];
+                        m[cur] = temp;
 
                         int tempi = y[i];
-                        y[i] = y[j];
-                        y[j] = tempi;
+                        y[i] = y[cur];
+                        y[cur] = tempi;
 
                         zeroCol = false;
                         break;
@@ -249,18 +285,18 @@ namespace HyperellipticCurves
                 if (zeroCol)
                     continue;
 
-                var inv = field.Inverse(m[j][j]);
-                m[j] = field.MultiplyPoly(m[j], new List<int> { inv });
-                y[j] = field.Multiply(y[j], inv);
-
-
+                var inv = field.Inverse(m[cur][j]);
+                m[cur] = field.MultiplyPoly(m[cur], new List<int> { inv });
+                y[cur] = field.Multiply(y[cur], inv);
 
                 for (int i = 0; i < m.Count; i++)
-                    if (i != j)
+                    if (i != cur)
                     {
-                        m[i] = field.SubtractPoly(m[i], field.MultiplyPoly(m[j], new List<int> { m[i][j] }));
-                        y[i] = field.Subtract(y[i], field.Multiply(y[j], m[i][j]));
+                        var mult = m[i][j];
+                        m[i] = field.SubtractPoly(m[i], field.MultiplyPoly(m[cur], new List<int> { mult }));
+                        y[i] = field.Subtract(y[i], field.Multiply(y[cur], mult));
                     }
+                cur++;
 
                 //for (int i = 0; i < m.Count; i++)
                 //    Program.Print(m[i]);
@@ -402,5 +438,23 @@ namespace HyperellipticCurves
 //    //Program.Print(element);
 //    //Program.Print(res);
 //    return res;
+//}
+//private List<BigInteger> PrimeFactors(BigInteger m)
+//{
+//    var res = new List<BigInteger>();
+
+//    // possible group sizes for elliptic curves
+//    if (m == BigInteger.Parse("2269"))
+//    {
+//        res.Add(BigInteger.Parse("2269"));
+//        return res;
+//    }
+//    else if (m == BigInteger.Parse("49269609804781974450852068861184694669"))
+//    {
+//        res.Add(BigInteger.Parse("49269609804781974450852068861184694669"));
+//        return res;
+//    }
+
+//    return null;
 //}
 

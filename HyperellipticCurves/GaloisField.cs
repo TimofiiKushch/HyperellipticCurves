@@ -487,6 +487,10 @@ namespace HyperellipticCurves
         {
             return x * x * x + a * x + b;
         }
+        public GFElement<T> LeftSide(GFElement<T> y)
+        {
+            return y * y - b;
+        }
         public bool IsOnTheCurve(ECP<T> a)
         {
             if (a is null)
@@ -613,6 +617,7 @@ namespace HyperellipticCurves
     {
         public EllipticCurve<int> curve { get; private set; }
         public EllipticCurve<GFElement<int>> curve6 { get; private set; }
+        public CubicEquationSolver solver;
 
         BigInteger m;
         public BigInteger q { get; private set; }
@@ -623,8 +628,8 @@ namespace HyperellipticCurves
         GFElement<GFElement<int>> rp;
         GFElement<GFElement<int>> rm;
 
-        static EllipticCurve<GFElement<int>> lastCurve;
-        static BigInteger order;
+        //static EllipticCurve<GFElement<int>> lastCurve;
+        //static BigInteger order;
         private class FieldData
         {
             public FieldData(int dimension, Dictionary<int, int> p1)
@@ -664,36 +669,39 @@ namespace HyperellipticCurves
             GaloisField<int> field;
             GaloisField<GFElement<int>> field6;
             (field, field6) = InitFields(l, positive);
+            solver = new CubicEquationSolver(field);
             curve = new(new GFElement<int>(a, field), new GFElement<int>(b, field));
             curve6 = new(new(new List<GFElement<int>> { curve.a }, field6), new(new List<GFElement<int>> { curve.b }, field6));
 
             if (initCurveData)
                 InitCurveData(field, field6, positive);
+
+            
         }
-        private BigInteger BonehCurveSize(GaloisField<int> field, bool positive)
+        public static BigInteger BonehCurveSize(int l, bool positive)
         {
             if (positive)
             {
-                if (field.dimension % 12 == 1 || field.dimension % 12 == 11)
-                    return BigInteger.Pow(3, field.dimension) + BigInteger.Pow(3, (field.dimension + 1) / 2) + 1;
-                else if (field.dimension % 12 == 5 || field.dimension % 12 == 7)
-                    return BigInteger.Pow(3, field.dimension) - BigInteger.Pow(3, (field.dimension + 1) / 2) + 1;
+                if (l % 12 == 1 || l % 12 == 11)
+                    return BigInteger.Pow(3, l) + BigInteger.Pow(3, (l + 1) / 2) + 1;
+                else if (l % 12 == 5 || l % 12 == 7)
+                    return BigInteger.Pow(3, l) - BigInteger.Pow(3, (l + 1) / 2) + 1;
                 else
                     throw new Exception("Wrong field dimension");
             }
             else
             {
-                if (field.dimension % 12 == 1 || field.dimension % 12 == 11)
-                    return BigInteger.Pow(3, field.dimension) - BigInteger.Pow(3, (field.dimension + 1) / 2) + 1;
-                else if (field.dimension % 12 == 5 || field.dimension % 12 == 7)
-                    return BigInteger.Pow(3, field.dimension) + BigInteger.Pow(3, (field.dimension + 1) / 2) + 1;
+                if (l % 12 == 1 || l % 12 == 11)
+                    return BigInteger.Pow(3, l) - BigInteger.Pow(3, (l + 1) / 2) + 1;
+                else if (l % 12 == 5 || l % 12 == 7)
+                    return BigInteger.Pow(3, l) + BigInteger.Pow(3, (l + 1) / 2) + 1;
                 else
                     throw new Exception("Wrong field dimension");
             }
         }
         private void InitCurveData(GaloisField<int> field, GaloisField<GFElement<int>> field6, bool positive)
         {
-            m = BonehCurveSize(field, positive);
+            m = BonehCurveSize(field.dimension, positive);
             
             string fileName = "curves.json";
             List<CurveData> source = null;
@@ -713,10 +721,13 @@ namespace HyperellipticCurves
                     if (data.l == field.dimension && data.positive == positive)
                     {
                         q = BigInteger.Parse(data.q);
-                        pq = new(new(data.pqx, field), new(data.pqy, field));
-                        s = new(new((from list in data.sx select new GFElement<int>(list, field)).ToList(), 
-                            field6), new((from list in data.sy select new GFElement<int>(list, field)).ToList(), 
-                            field6));
+                        if (data.pqx is not null && data.pqy is not null && data.sx is not null && data.sy is not null)
+                        {
+                            pq = new(new(data.pqx, field), new(data.pqy, field));
+                            s = new(new((from list in data.sx select new GFElement<int>(list, field)).ToList(),
+                                field6), new((from list in data.sy select new GFElement<int>(list, field)).ToList(),
+                                field6));
+                        }
                         break;
                     }
                 }
@@ -724,16 +735,17 @@ namespace HyperellipticCurves
 
             if (pq is null)
             {
-                var factors = PrimeFactors(m);
-                q = factors.Max<BigInteger>();
+                //var factors = PrimeFactors(m);
+                //q = factors.Max<BigInteger>();
 
-                pq = RandomPointOfPrimeOrder(q, curve, true);
-                s = RandomPointOfPrimeOrder(q, curve6, false);
+                pq = RandomPointOrderQSmallCurve();
+                s = RandomPointOfOrderNotQBigCurve();
+
+                source.RemoveAll(data => BigInteger.Parse(data.q) == q);
                 source.Add(new(field.dimension, positive, q.ToString(), pq.x.p, pq.y.p,
                     (from el in s.x.p select el.p).ToList(),
                     (from el in s.y.p select el.p).ToList()));
                 source.Sort((data1, data2) => data1.l - data2.l);
-
                 string json = JsonSerializer.Serialize(source, options);
                 File.WriteAllText(fileName, json);
             }
@@ -775,9 +787,12 @@ namespace HyperellipticCurves
 
                         // need to define automorphism
                         var tempField = new GaloisField<int>(new PrimeField(3), p6);
+                        var smallSolver = new CubicEquationSolver(tempField);
 
                         var y2 = GaloisField<int>.Root(new GFElement<int>(new List<int> { -1 }, tempField));
-                        var y3 = Methods.SolveCubicEquation3L(positive ? 1 : 2, tempField);
+
+                        //var y3 = Methods.SolveCubicEquation3L(positive ? 1 : 2, tempField);
+                        var y3 = smallSolver.Solve(new GFElement<int>(new List<int> { positive ? 1 : 2 }, tempField)).p;
 
                         u = new((from e in y2.p select field.Scalar(e)).ToList(), field6);
                         rm = new((from e in y3 select field.Scalar(e)).ToList(), field6);
@@ -789,24 +804,6 @@ namespace HyperellipticCurves
             }
 
             return (field, field6);
-        }
-        private List<BigInteger> PrimeFactors(BigInteger m)
-        {
-            var res = new List<BigInteger>();
-
-            // possible group sizes for elliptic curves
-            if (m == BigInteger.Parse("2269"))
-            {
-                res.Add(BigInteger.Parse("2269"));
-                return res;
-            }
-            else if (m == BigInteger.Parse("49269609804781974450852068861184694669"))
-            {
-                res.Add(BigInteger.Parse("49269609804781974450852068861184694669"));
-                return res;
-            }
-
-            return null;
         }
         private List<int> FindIrreducible(int fp, int n)
         {
@@ -879,29 +876,67 @@ namespace HyperellipticCurves
                 }
             }
         }
-        public static ECP<T> RandomPointOfPrimeOrder<T>(BigInteger order, EllipticCurve<T> c, bool mustBeOfThisOrder)
+        private ECP<int> RandomPointOrderQSmallCurve() // need to know m, q to find a point of q
         {
-            ECP<T> p = null;
             while (true)
             {
-                GFElement<T> px, py;
+                var py = curve.field.RandomNonZero();
+                var leftSide = py * py - curve.b;
 
-                px = c.field.RandomNonZero();
-                var root = GaloisField<T>.Root(c.RightSide(px));
+                if (solver.Trace(leftSide) != 0)
+                    continue;
+                var root = solver.Solve(leftSide);
+                var rootPoly = root.p;
+                rootPoly[0] = new Random().Next() % 3;
+                var x = new GFElement<int>(rootPoly, curve.field);
+
+                var p = new ECP<int>(x, py);
+                return curve.Mult(p, m / q);
+            }
+        }
+        private ECP<GFElement<int>> RandomPointOfOrderNotQBigCurve()
+        {
+            while (true)
+            {
+                GFElement<GFElement<int>> px, py;
+
+                px = curve6.field.RandomNonZero();
+                var root = GaloisField<GFElement<int>>.Root(curve6.RightSide(px));
                 if (root is not null)
                     py = root;
                 else
                     continue;
 
-                p = new ECP<T>(px, py);
-                var pq = c.Mult(p, order);
+                var p = new ECP<GFElement<int>>(px, py);
+                var pq = curve6.Mult(p, q);
 
-                if ((pq is null && mustBeOfThisOrder) || (pq is not null && !mustBeOfThisOrder))
-                    break;
+                if (pq is not null)
+                    return p;
             }
-
-            return p;
         }
+        //public static ECP<T> RandomPointOfPrimeOrder<T>(BigInteger order, EllipticCurve<T> c, bool mustBeOfThisOrder)
+        //{
+        //    ECP<T> p = null;
+        //    while (true)
+        //    {
+        //        GFElement<T> px, py;
+
+        //        px = c.field.RandomNonZero();
+        //        var root = GaloisField<T>.Root(c.RightSide(px));
+        //        if (root is not null)
+        //            py = root;
+        //        else
+        //            continue;
+
+        //        p = new ECP<T>(px, py);
+        //        var pq = c.Mult(p, order);
+
+        //        if ((pq is null && mustBeOfThisOrder) || (pq is not null && !mustBeOfThisOrder))
+        //            break;
+        //    }
+
+        //    return p;
+        //}
         class HPQ
         {
             ECP<GFElement<int>> p, q;
@@ -970,7 +1005,7 @@ namespace HyperellipticCurves
 
             for (int i = t; i >= 0; i--)
             {
-                Console.WriteLine(i);
+                //Console.WriteLine(i);
                 for (int j = 0; j < r.Count; j++)
                     res[j] *= res[j];
 
@@ -991,13 +1026,8 @@ namespace HyperellipticCurves
 
             return res;
         }
-        static public GFElement<GFElement<int>> WeilPairing(ECP<GFElement<int>> p, ECP<GFElement<int>> q, BigInteger n, EllipticCurve<GFElement<int>> curve, ECP<GFElement<int>> s = null)
+        static public GFElement<GFElement<int>> WeilPairing(ECP<GFElement<int>> p, ECP<GFElement<int>> q, BigInteger n, EllipticCurve<GFElement<int>> curve, ECP<GFElement<int>> s)
         {
-            if (s is null)
-                s = RandomPointOfPrimeOrder(n, curve, false);
-
-            //s = new(new(new List<GFElement> { curve.field.baseField.Scalar(0) }, curve.field), new(new List<GFElement> { curve.field.baseField.Scalar(36) }, curve.field));
-
             var sn = new ECP<GFElement<int>>(s.x, -s.y);
 
             var args1 = new List<ECP<GFElement<int>>> { curve.Action(q, s), s };
@@ -1050,6 +1080,53 @@ namespace HyperellipticCurves
                 if (b)
                     root = -root;
                 var pm = new ECP<int>(x, root);
+
+                pm = curve.Mult(pm, this.m / this.q);
+
+                if (pm is not null)
+                    return pm;
+            }
+
+            throw new Exception();
+        }
+        public ECP<int> MapToGroupUpdated(byte[] m, float delta)
+        {
+            int I = (int)Math.Ceiling(Math.Log2(Math.Log2(1 / delta)) - Math.Log2(Math.Log2(3) - 1));
+            int maxIter = (int)Math.Pow(2, I);
+
+            var hashAlg = SHA256.Create(); // 256 bits is enough
+            for (int iter = 0; iter < maxIter; iter++)
+            {
+                BigInteger h = new BigInteger(m);
+                h += iter;
+                var hash = hashAlg.ComputeHash(h.ToByteArray());
+                h = new BigInteger(hash);
+                if (h < 0)
+                    h = -h;
+
+                BigInteger mod = curve.field.size * 3;
+                h %= mod;
+
+                int t = (int)(h % 3);
+                h /= 3;
+
+                List<int> poly = new List<int>(curve.field.dimension);
+                for (int i = 0; i < curve.field.dimension; i++)
+                {
+                    poly.Add((int)(h % 3));
+                    h /= 3;
+                }
+
+                var y = new GFElement<int>(poly, curve.field);
+                var leftSide = y * y - curve.b;
+
+                if (solver.Trace(leftSide) != 0)
+                    continue;
+                var root = solver.Solve(leftSide);
+                var rootPoly = root.p;
+                rootPoly[0] = t;
+                var x = new GFElement<int>(rootPoly, curve.field);
+                var pm = new ECP<int>(x, y);
 
                 var mult = this.m / this.q; // must know m and q
                 pm = curve.Mult(pm, mult);
