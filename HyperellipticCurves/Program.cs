@@ -14,13 +14,45 @@ namespace HyperellipticCurves
             //var encodedMessage = File.ReadAllBytes("Short Signatures from the Weil Pairing.pdf");
             //SignatureSchemeUpdated(79, false, encodedMessage);
 
+            // 7-, 11-, 17-, 19-, 31+, 37+, 47+, 53+
             // 79-, 97+, 149+, 163+, 163-, 167+
 
             float failureP = 1e-6f;
             var message = Encoding.ASCII.GetBytes("Hello world!");
 
             //SignatureScheme(79, false, message, failureP);
-            SignatureSchemeUpdated(79, false, message, failureP);
+            //SignatureSchemeUpdated(97, true, message, failureP);
+
+            //var ls = new List<int> { 11, 13, 17, 19, 23, 29, 31 };
+            //foreach (var l in ls)
+            //    SignatureScheme(l, false, message, failureP);
+
+            var inputParams = new List<(int, bool)> { (7, false), (11, false), (17, false), (19, false), (31, true), (37, true), (47, true), (53, true), (79, false), (97, true), (149, true), (163, false) };
+            //foreach (var pair in inputParams)
+            //{
+            //    var cur = DateTime.Now;
+            //    var poly = EllipticCurveManager.FindIrreducible(3, pair.Item1);
+            //    Console.WriteLine($"Found polynomial for l = {pair.Item1}");
+            //    PrintPoly(poly);
+            //    Console.WriteLine((DateTime.Now - cur).TotalSeconds);
+            //    Console.WriteLine();
+            //}
+            //Console.Read();
+
+            var rand = new Random();
+            var messages = new List<byte[]>();
+            for (int i = 0; i < 100; i++) 
+            {
+                messages.Add(new byte[8]);
+                rand.NextBytes(messages[i]);
+            }
+
+            foreach (var pair in inputParams)
+            {
+                SignatureScheme(pair.Item1, pair.Item2, message, failureP);
+                SignatureSchemeUpdated(pair.Item1, pair.Item2, message, failureP);
+                
+            }
         }
 
         // l - dimension of the field F_3^l
@@ -62,7 +94,7 @@ namespace HyperellipticCurves
             }
             var r = cm.curve.Mult(p, x);
 
-            Console.WriteLine("Signature scheme v1: generated keys");
+            Console.WriteLine($"Signature scheme v1, l = {l}: generated keys");
             Console.WriteLine($"Last step took: {(DateTime.Now - curTime).TotalSeconds}");
             curTime = DateTime.Now;
 
@@ -70,7 +102,7 @@ namespace HyperellipticCurves
             var pm = cm.MapToGroup(message, 1e-6f); // probability of a failure
             var sm = cm.curve.Mult(pm, x);
 
-            Console.WriteLine("Signature scheme v1: signed the message");
+            Console.WriteLine($"Signature scheme v1, l = {l}: signed the message");
             Console.WriteLine($"Last step took: {(DateTime.Now - curTime).TotalSeconds}");
             curTime = DateTime.Now;
             return (cm, p, sm, r);
@@ -98,7 +130,7 @@ namespace HyperellipticCurves
 
             if (u == v || u == cm.curve6.field.Inverse(v))
             {
-                Console.WriteLine("Signature scheme v1: verified the message");
+                Console.WriteLine($"Signature scheme v1, l = {cm.curve.field.dimension}: verified the message");
                 Console.WriteLine($"Last step took: {(DateTime.Now - curTime).TotalSeconds}");
                 Console.WriteLine();
             }
@@ -133,7 +165,7 @@ namespace HyperellipticCurves
             }
             var r = cm.curve.Mult(p, x);
 
-            Console.WriteLine("Signature scheme v2: generated keys");
+            Console.WriteLine($"Signature scheme v2, l = {l}: generated keys");
             Console.WriteLine($"Last step took: {(DateTime.Now - curTime).TotalSeconds}");
             curTime = DateTime.Now;
 
@@ -141,7 +173,7 @@ namespace HyperellipticCurves
             var pm = cm.MapToGroupUpdated(message, 1e-6f); // probability of a failure
             var sm = cm.curve.Mult(pm, x);
 
-            Console.WriteLine("Signature scheme v2: signed the message");
+            Console.WriteLine($"Signature scheme v2, l = {l}: signed the message");
             Console.WriteLine($"Last step took: {(DateTime.Now - curTime).TotalSeconds}");
             curTime = DateTime.Now;
             return (cm, p, sm, r);
@@ -173,7 +205,7 @@ namespace HyperellipticCurves
 
             if (u == v)
             {
-                Console.WriteLine("Signature scheme v2: verified the message");
+                Console.WriteLine($"Signature scheme v2, l = {cm.curve.field.dimension}: verified the message");
                 Console.WriteLine($"Last step took: {(DateTime.Now - curTime).TotalSeconds}");
                 Console.WriteLine();
             }
@@ -230,6 +262,20 @@ namespace HyperellipticCurves
             foreach (var el in element.p)
                 Print(el);
             Console.WriteLine();
+        }
+        public static void PrintPoly(List<int> polynomial)
+        {
+            var res = "";
+            for (int i = 0; i < polynomial.Count; i++)
+                if (polynomial[i] != 0)
+                {
+                    if (i !=0)
+                        res += $"{polynomial[i]}x^{i} + ";
+                    else
+                        res += $"{polynomial[i]} + ";
+                }
+            res = res.Remove(res.Length - 3);
+            Console.WriteLine(res);
         }
     }
 }

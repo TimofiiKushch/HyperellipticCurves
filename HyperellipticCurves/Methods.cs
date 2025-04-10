@@ -48,7 +48,6 @@ namespace HyperellipticCurves
                 baseElement[i] -= 1;
                 baseElement[3 * i] += 1;
                 equationMatrix.Add(new GFElement<int>(baseElement, field));
-                Program.Print(equationMatrix[i]);
             }
         }
 

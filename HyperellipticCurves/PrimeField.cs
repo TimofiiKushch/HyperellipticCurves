@@ -136,7 +136,6 @@ namespace HyperellipticCurves
 
             return c;
         }
-
         public List<int> SubtractPoly(List<int> a, List<int> b)
         {
 
@@ -154,7 +153,6 @@ namespace HyperellipticCurves
 
             return c;
         }
-
         public List<int> MultiplyPoly(List<int> a, List<int> b)
         {
             List<int> c = new List<int>(a.Count + b.Count - 1);
@@ -249,7 +247,6 @@ namespace HyperellipticCurves
             else
                 return new PrimePolynomial(new List<int> { 1 }, this);
         }
-        
         public int Degree(List<int> polynomial)
         {
             int li = polynomial.FindLastIndex((int i) => i != 0);

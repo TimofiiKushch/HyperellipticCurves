@@ -675,8 +675,6 @@ namespace HyperellipticCurves
 
             if (initCurveData)
                 InitCurveData(field, field6, positive);
-
-            
         }
         public static BigInteger BonehCurveSize(int l, bool positive)
         {
@@ -702,6 +700,7 @@ namespace HyperellipticCurves
         private void InitCurveData(GaloisField<int> field, GaloisField<GFElement<int>> field6, bool positive)
         {
             m = BonehCurveSize(field.dimension, positive);
+            //Console.WriteLine(m);
             
             string fileName = "curves.json";
             List<CurveData> source = null;
@@ -723,11 +722,12 @@ namespace HyperellipticCurves
                         q = BigInteger.Parse(data.q);
                         if (data.pqx is not null && data.pqy is not null && data.sx is not null && data.sy is not null)
                         {
-                            pq = new(new(data.pqx, field), new(data.pqy, field));
-                            s = new(new((from list in data.sx select new GFElement<int>(list, field)).ToList(),
-                                field6), new((from list in data.sy select new GFElement<int>(list, field)).ToList(),
-                                field6));
+                            //pq = new(new(data.pqx, field), new(data.pqy, field));
+                            //s = new(new((from list in data.sx select new GFElement<int>(list, field)).ToList(),
+                            //    field6), new((from list in data.sy select new GFElement<int>(list, field)).ToList(),
+                            //    field6));
                         }
+
                         break;
                     }
                 }
@@ -741,7 +741,7 @@ namespace HyperellipticCurves
                 pq = RandomPointOrderQSmallCurve();
                 s = RandomPointOfOrderNotQBigCurve();
 
-                source.RemoveAll(data => BigInteger.Parse(data.q) == q);
+                source.RemoveAll(data => data.l == field.dimension && data.positive == positive);
                 source.Add(new(field.dimension, positive, q.ToString(), pq.x.p, pq.y.p,
                     (from el in s.x.p select el.p).ToList(),
                     (from el in s.y.p select el.p).ToList()));
@@ -792,11 +792,11 @@ namespace HyperellipticCurves
                         var y2 = GaloisField<int>.Root(new GFElement<int>(new List<int> { -1 }, tempField));
 
                         //var y3 = Methods.SolveCubicEquation3L(positive ? 1 : 2, tempField);
-                        var y3 = smallSolver.Solve(new GFElement<int>(new List<int> { positive ? 1 : 2 }, tempField)).p;
+                        var y3 = smallSolver.Solve(new GFElement<int>(new List<int> { 1 }, tempField)).p;
 
                         u = new((from e in y2.p select field.Scalar(e)).ToList(), field6);
-                        rm = new((from e in y3 select field.Scalar(e)).ToList(), field6);
-                        rp = -rm;
+                        rp = new((from e in y3 select field.Scalar(e)).ToList(), field6);
+                        rm = -rp;
 
                         break;
                     }
@@ -805,7 +805,7 @@ namespace HyperellipticCurves
 
             return (field, field6);
         }
-        private List<int> FindIrreducible(int fp, int n)
+        public static List<int> FindIrreducible(int fp, int n)
         {
             var primeField = new PrimeField(fp);
 
@@ -816,24 +816,67 @@ namespace HyperellipticCurves
 
             var irreducible = new List<int>(Enumerable.Repeat(0, n + 1));
             irreducible[n] = 1;
+            irreducible[0] = 1;
 
             int iteration = 1;
             while (true)
             {
-                Console.WriteLine($"Iteration: {iteration}");
+                //Console.WriteLine($"Iteration: {iteration}");
                 iteration++;
 
+                bool foundOne = false;
                 for (int i = 0; i < n; i++)
                 {
-                    irreducible[i] = primeField.Add(irreducible[i], 1);
-                    if (irreducible[0] == 0)
+                    if (irreducible[i] == 2)
+                        irreducible[i] = 1;
+                    else if (irreducible[i] == 1)
                     {
-                        irreducible[0] = 1;
-                        continue;
-                    }
-                    if (irreducible[i] != 0)
+                        irreducible[i] = 2;
+                        foundOne = true;
                         break;
+                    }
                 }
+
+                if (!foundOne)
+                {
+                    int nonZeros = 0;
+                    bool foundEmpty = false;
+                    for (int i = 1; i < n; i++)
+                    {
+                        if (irreducible[i] == 1)
+                        {
+                            irreducible[i] = 0;
+                            if (irreducible[i + 1] == 0)
+                            {
+                                irreducible[i + 1] = 1;
+                                foundEmpty = true;
+                                break;
+                            }
+                            else
+                                nonZeros++;
+                        }
+                    }
+
+                    if (!foundEmpty)
+                        nonZeros++;
+
+                    for (int i = 1; i <= nonZeros; i++)
+                        irreducible[i] = 1;
+                }
+
+                //Program.Print(irreducible);
+
+                //for (int i = 0; i < n; i++)
+                //{
+                //    irreducible[i] = primeField.Add(irreducible[i], 1);
+                //    if (irreducible[0] == 0)
+                //    {
+                //        irreducible[0] = 1;
+                //        continue;
+                //    }
+                //    if (irreducible[i] != 0)
+                //        break;
+                //}
 
                 //irreducible = new List<int> { 1, 2, 0, 0, 0, 1 };
 
@@ -878,8 +921,11 @@ namespace HyperellipticCurves
         }
         private ECP<int> RandomPointOrderQSmallCurve() // need to know m, q to find a point of q
         {
+            int i = 0;
             while (true)
             {
+                var cur = DateTime.Now;
+                i++;
                 var py = curve.field.RandomNonZero();
                 var leftSide = py * py - curve.b;
 
@@ -891,13 +937,19 @@ namespace HyperellipticCurves
                 var x = new GFElement<int>(rootPoly, curve.field);
 
                 var p = new ECP<int>(x, py);
+
+                Console.WriteLine($"{i} iterations to find point of order q");
+                Console.WriteLine($"Spent in final iteration: {(DateTime.Now - cur).TotalSeconds}");
                 return curve.Mult(p, m / q);
             }
         }
         private ECP<GFElement<int>> RandomPointOfOrderNotQBigCurve()
         {
+            int i = 0;
             while (true)
             {
+                var cur = DateTime.Now;
+                i++;
                 GFElement<GFElement<int>> px, py;
 
                 px = curve6.field.RandomNonZero();
@@ -911,32 +963,13 @@ namespace HyperellipticCurves
                 var pq = curve6.Mult(p, q);
 
                 if (pq is not null)
+                {
+                    Console.WriteLine($"{i} iterations to find point of order not q");
+                    Console.WriteLine($"Spent in final iteration: {(DateTime.Now - cur).TotalSeconds}");
                     return p;
+                }
             }
         }
-        //public static ECP<T> RandomPointOfPrimeOrder<T>(BigInteger order, EllipticCurve<T> c, bool mustBeOfThisOrder)
-        //{
-        //    ECP<T> p = null;
-        //    while (true)
-        //    {
-        //        GFElement<T> px, py;
-
-        //        px = c.field.RandomNonZero();
-        //        var root = GaloisField<T>.Root(c.RightSide(px));
-        //        if (root is not null)
-        //            py = root;
-        //        else
-        //            continue;
-
-        //        p = new ECP<T>(px, py);
-        //        var pq = c.Mult(p, order);
-
-        //        if ((pq is null && mustBeOfThisOrder) || (pq is not null && !mustBeOfThisOrder))
-        //            break;
-        //    }
-
-        //    return p;
-        //}
         class HPQ
         {
             ECP<GFElement<int>> p, q;
@@ -1084,7 +1117,10 @@ namespace HyperellipticCurves
                 pm = curve.Mult(pm, this.m / this.q);
 
                 if (pm is not null)
+                {
+                    //Console.WriteLine($"{iter+1} iterations in hash function");
                     return pm;
+                }
             }
 
             throw new Exception();
@@ -1132,7 +1168,10 @@ namespace HyperellipticCurves
                 pm = curve.Mult(pm, mult);
 
                 if (pm is not null)
+                {
+                    //Console.WriteLine($"{iter+1} iterations in hash function");
                     return pm;
+                }
             }
 
             throw new Exception();
